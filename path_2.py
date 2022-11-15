@@ -23,9 +23,15 @@ def get_fare_info(vehicle):
     }
     return fare_info[vehicle]
 
-def sys_based_fare_price():
+def sys_based_fare_price(result):
+    # distance_travel=result['rows'][0]['distance'] ERROR DONT KNOW WHY?
+    # time_taken=result['rows'][0]['time'] ERROR DONT KNOW WHY?
+    distance_travel=10 # I hardcoded as i have an error
+    time_taken=5 # I hardcoded as i have an error
     car_info=get_fare_info("mini")
     # print(car_info['base_fee'])
+    fare=car_info['base_fee']+(car_info['per_min']*time_taken) + (car_info['per_km']*distance_travel)
+    return fare
 
 
 def get_distance_time():
@@ -158,7 +164,6 @@ result=get_distance_time()
 # print(result.decode("utf-8"))
 
 
-
 # GET PRICE FOR RIDE
-distance=10 # I hardcoded however use API to get distance
-sys_based_fare_price()
+fare=sys_based_fare_price(result)
+print(fare)
