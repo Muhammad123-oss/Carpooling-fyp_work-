@@ -18,7 +18,7 @@ def get_fare_info(vehicle):
     # Creating a Dictionary for vehicle fare info
     fare_info={
         'mini':{'base_fee':100.28,'per_km':17,'per_min':7.63,'min_fare':131},
-        'go':{'base_fee':124.18,'per_km':21.06,'per_min':9.45,'min_fare':163},
+        'go':{'base_fee':124.18,'per_km':21.06,'per_min':9.45,'min_fare':163}
     }
     return fare_info[vehicle]
 
