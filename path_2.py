@@ -6,6 +6,7 @@ import requests
 import pymysql
 import json
 import http.client
+from enum import Enum
 
 def dbconnect():
     # database connection
@@ -13,6 +14,19 @@ def dbconnect():
     # cursor = connection.cursor()
     # some other statements  with the help of cursor
     return connection
+
+def get_fare_info(vehicle):
+    # Creating a Dictionary for vehicle fare info
+    fare_info={
+        'mini':{'base_fee':100.28,'per_km':17,'per_min':7.63,'min_fare':131},
+        'go':{'base_fee':124.18,'per_km':21.06,'per_min':9.45,'min_fare':163},
+    }
+    return fare_info[vehicle]
+
+def sys_based_fare_price():
+    car_info=get_fare_info("mini")
+    # print(car_info['base_fee'])
+
 
 def get_distance_time():
     query={"origins":"24.878937747538565,67.1884669257004","destinations":"24.857142456865084,67.26475889871588","departure_time":"now","key":"ntTWUnz82Npcyzj2xFj0yT8vojEjJ"}
@@ -91,6 +105,7 @@ m.save('./route_map.html')
 routeArray =[]
 coo=[]
 total_cood=len(response.json()['features'][0]['geometry']['coordinates'][0])
+# print(total_cood)
 #gap=total_cood/5
 # print(int(gap))
 for y in response.json()['features'][0]['geometry']['coordinates'][0]:        #[::int(gap)]:
@@ -108,12 +123,14 @@ routeee=json.dumps(coo)
 # cursor.execute("INSERT INTO routes(route_no,complete_route) VALUES(%s,%s)",(routeee))
 # connection.commit()
 
-# Checking for similar destination routes
+# Checking for similar destination routes (dest long lat ,source long lat)
 dest_data=get_same_route(24.848005, 66.995209,24.908439,67.221243)
 for row in dest_data:
     # print(json.loads(row))
     r1=np.asarray(row)
-    # print(r1[0])
+    #Converting json(string) column from DB to Python list
+    arr_type=json.loads(r1[6])  
+    # print(len(arr_type))
 
     # print('\n')
 
@@ -132,10 +149,16 @@ for row in record:
 # result=cordinate_to_name(24.8961, 67.0814)
 # for x in result['results']:
 #     if(x['location_type']=='exact'):
-#         print(x['sublocality'])
+#         print(x['sublocality'])uuuuuuuyujkk 
 
 
 # GET TWO CO-ORDINATE DISTANCE AND TIME
 result=get_distance_time()
-print(result['rows'][0])
+# print(result['rows'][0])
 # print(result.decode("utf-8"))
+
+
+
+# GET PRICE FOR RIDE
+distance=10 # I hardcoded however use API to get distance
+sys_based_fare_price()
