@@ -6,7 +6,6 @@ import requests
 import pymysql
 import json
 import http.client
-from enum import Enum
 
 def dbconnect():
     # database connection
