@@ -50,7 +50,7 @@ def user_based_fare_price(result):
 
 
 # User Base Fare Caculation Based On Distance 
-def user_based_fare_price(result):
+def user_based_fare_price_on_distance(result):
     # distance_travel=result['rows'][0]['distance'] ERROR DONT KNOW WHY?
     distance_travel=10 # I hardcoded as i have an error
     fare_per_km=float(input("How much fare per km you want to charge: "))
@@ -190,5 +190,24 @@ result=get_distance_time()
 
 
 # GET PRICE FOR RIDE
-fare=sys_based_fare_price(result)
-print(fare)
+
+# fare=sys_based_fare_price(result)
+# print(fare)
+fare=0
+print("1.System Based Calculation \n 2.User Based Calculation \n 3.User Based Calculation only time\n")
+user_choice=int(input("Kindly Select AnyOne Option "))
+match user_choice:
+    case 1:
+       fare=sys_based_fare_price(result)
+    case 2:
+        fare=user_based_fare_price(result)
+    case 3:
+        fare=user_based_fare_price_on_distance(result)
+    case _:
+        print("Kindly Select right option")   
+
+
+if fare==0:
+    print("Sorry You Select a wrong choice")
+else:
+    print(fare)
