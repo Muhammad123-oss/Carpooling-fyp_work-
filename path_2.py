@@ -6,6 +6,7 @@ import requests
 import pymysql
 import json
 import http.client
+import re
 
 def dbconnect():
     # database connection
@@ -24,9 +25,9 @@ def get_fare_info(vehicle):
 
 # System Base Fare Caculation Based On Distance+Time
 def sys_based_fare_price(result):
-    # distance_travel=result['rows'][0]['distance'] ERROR DONT KNOW WHY?
-    # time_taken=result['rows'][0]['time'] ERROR DONT KNOW WHY?
-    distance_travel=10 # I hardcoded as i have an error
+    distance_travel=result['rows'][0]['elements'][0]['distance']['value'] #ERROR BCZ API WEEK LIMIT EXISTS
+    # time_taken=result['rows'][0]['time'] #ERROR BCZ API WEEK LIMIT EXISTS
+    # distance_travel=10 # I hardcoded as i have an error
     time_taken=5 # I hardcoded as i have an error
     car_info=get_fare_info("mini")
     # print(car_info['base_fee'])
@@ -38,9 +39,9 @@ def sys_based_fare_price(result):
 
 # User Base Fare Caculation Based On Distance+Time
 def user_based_fare_price(result):
-    # distance_travel=result['rows'][0]['distance'] ERROR DONT KNOW WHY?
-    # time_taken=result['rows'][0]['time'] ERROR DONT KNOW WHY?
-    distance_travel=10 # I hardcoded as i have an error
+    distance_travel=result['rows'][0]['elements'][0]['distance']['value'] #ERROR BCZ API WEEK LIMIT EXISTS
+    # time_taken=result['rows'][0]['time'] #ERROR BCZ API WEEK LIMIT EXISTS
+    # distance_travel=10 # I hardcoded as i have an error
     time_taken=5 # I hardcoded as i have an error
     fare_per_km=float(input("How much fare per km you want to charge: "))
     fare_per_min=float(input("How much fare per minute you want to charge: "))
@@ -185,7 +186,7 @@ for row in record:
 
 # GET TWO CO-ORDINATE DISTANCE AND TIME
 result=get_distance_time()
-# print(result['rows'][0])
+# print(type(result['rows'][0]['elements'][0]['distance']['value']))
 # print(result.decode("utf-8"))
 
 
