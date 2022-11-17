@@ -22,6 +22,7 @@ def get_fare_info(vehicle):
     }
     return fare_info[vehicle]
 
+# System Base Fare Caculation Based On Distance+Time
 def sys_based_fare_price(result):
     # distance_travel=result['rows'][0]['distance'] ERROR DONT KNOW WHY?
     # time_taken=result['rows'][0]['time'] ERROR DONT KNOW WHY?
@@ -30,6 +31,31 @@ def sys_based_fare_price(result):
     car_info=get_fare_info("mini")
     # print(car_info['base_fee'])
     fare=car_info['base_fee']+(car_info['per_min']*time_taken) + (car_info['per_km']*distance_travel)
+    if(fare<car_info['min_fare']):
+        return car_info['min_fare']
+    else:
+        return fare
+
+# User Base Fare Caculation Based On Distance+Time
+def user_based_fare_price(result):
+    # distance_travel=result['rows'][0]['distance'] ERROR DONT KNOW WHY?
+    # time_taken=result['rows'][0]['time'] ERROR DONT KNOW WHY?
+    distance_travel=10 # I hardcoded as i have an error
+    time_taken=5 # I hardcoded as i have an error
+    fare_per_km=float(input("How much fare per km you want to charge: "))
+    fare_per_min=float(input("How much fare per minute you want to charge: "))
+    car_info=get_fare_info("mini")
+    fare=car_info['base_fee']+(fare_per_min*time_taken)+(fare_per_km*distance_travel)
+    return fare
+
+
+# User Base Fare Caculation Based On Distance 
+def user_based_fare_price(result):
+    # distance_travel=result['rows'][0]['distance'] ERROR DONT KNOW WHY?
+    distance_travel=10 # I hardcoded as i have an error
+    fare_per_km=float(input("How much fare per km you want to charge: "))
+    car_info=get_fare_info("mini")
+    fare=car_info['base_fee']+(fare_per_km*distance_travel)
     return fare
 
 
