@@ -25,11 +25,12 @@ def get_fare_info(vehicle):
 
 # System Base Fare Caculation Based On Distance+Time
 def sys_based_fare_price(result):
-    distance_travel=result['rows'][0]['elements'][0]['distance']['value'] #ERROR BCZ API WEEK LIMIT EXISTS
-    # time_taken=result['rows'][0]['time'] #ERROR BCZ API WEEK LIMIT EXISTS
+    distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
+    time_taken=result['rows'][0]['elements'][0]['duration']['value']/60 #ERROR BCZ API WEEK LIMIT EXISTS
     # distance_travel=10 # I hardcoded as i have an error
-    time_taken=5 # I hardcoded as i have an error
+    # time_taken=5 # I hardcoded as i have an error
     car_info=get_fare_info("mini")
+    # print(time_taken)
     # print(car_info['base_fee'])
     fare=car_info['base_fee']+(car_info['per_min']*time_taken) + (car_info['per_km']*distance_travel)
     if(fare<car_info['min_fare']):
@@ -39,10 +40,10 @@ def sys_based_fare_price(result):
 
 # User Base Fare Caculation Based On Distance+Time
 def user_based_fare_price(result):
-    distance_travel=result['rows'][0]['elements'][0]['distance']['value'] #ERROR BCZ API WEEK LIMIT EXISTS
-    # time_taken=result['rows'][0]['time'] #ERROR BCZ API WEEK LIMIT EXISTS
+    distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
+    time_taken=result['rows'][0]['elements'][0]['duration']['value']/60 #ERROR BCZ API WEEK LIMIT EXISTS
     # distance_travel=10 # I hardcoded as i have an error
-    time_taken=5 # I hardcoded as i have an error
+    # time_taken=5 # I hardcoded as i have an error
     fare_per_km=float(input("How much fare per km you want to charge: "))
     fare_per_min=float(input("How much fare per minute you want to charge: "))
     car_info=get_fare_info("mini")
@@ -52,8 +53,8 @@ def user_based_fare_price(result):
 
 # User Base Fare Caculation Based On Distance 
 def user_based_fare_price_on_distance(result):
-    # distance_travel=result['rows'][0]['distance'] ERROR DONT KNOW WHY?
-    distance_travel=10 # I hardcoded as i have an error
+    distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
+    # distance_travel=10 # I hardcoded as i have an error
     fare_per_km=float(input("How much fare per km you want to charge: "))
     car_info=get_fare_info("mini")
     fare=car_info['base_fee']+(fare_per_km*distance_travel)
@@ -186,6 +187,7 @@ for row in record:
 
 # GET TWO CO-ORDINATE DISTANCE AND TIME
 result=get_distance_time()
+# print(result['rows'][0]['elements'][0]['duration']['value'])
 # print(type(result['rows'][0]['elements'][0]['distance']['value']))
 # print(result.decode("utf-8"))
 
