@@ -40,6 +40,7 @@ def find_dist_btw_point(src_lat,src_lon,dest_lat,dest_lon):
 def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
     # Checking for similar destination routes (dest long lat ,source long lat)
     dest_data=get_same_route(user_dest_lat,user_dest_long)
+    nearest_riders=[]
     for row in dest_data:
         # print(json.loads(row))
         r1=np.asarray(row)
@@ -49,9 +50,21 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
         # print(arr_type)
         # print(np.ndim(arr_type)) #return the number of dimensions of an array
         # print('\n')
+    # print(arr_type[0])
     # dist_in_km=find_dist_btw_point(user_src_lat,user_src_long,user_dest_lat,user_dest_long) #Distance function Test 
     # print(dist_in_km)
-
+    num_rows=len(arr_type)
+    num_columns=len(arr_type[0])
+    # Calculating User Distance from Vehicle Route lat,lon
+    for row in range(num_rows):
+        dist_in_km=find_dist_btw_point(user_src_lat,user_src_long,arr_type[row][0],arr_type[row][1])
+        if(dist_in_km<1.5):
+            nearest_riders.append(dist_in_km)
+        else:
+            print(dist_in_km)
+            continue
+    print("Nearest Riders Array")
+    print(nearest_riders)
 
 
 def get_fare_info(vehicle):
