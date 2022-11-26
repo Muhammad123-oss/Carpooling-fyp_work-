@@ -7,6 +7,8 @@ import pymysql
 import json
 import http.client
 import re
+from math import radians, cos, sin, asin, sqrt
+
 
 def dbconnect():
     # database connection
@@ -14,6 +16,40 @@ def dbconnect():
     # cursor = connection.cursor()
     # some other statements  with the help of cursor
     return connection
+
+    """
+    Calculate the great circle distance in kilometers between two points 
+    on the earth (specified in decimal degrees)
+    """
+def find_dist_btw_point(src_lat,src_lon,dest_lat,dest_lon):
+    """
+    map(fun, iter)
+    fun : It is a function to which map passes each element of given iterable.
+    iter : It is a iterable which is to be mapped.
+    """
+    # Converting decimal degrees to radians
+    src_lat,src_lon,dest_lat,dest_lon=map(radians,[src_lat,src_lon,dest_lat,dest_lon])
+    dist_lat=dest_lat-src_lat
+    dist_lon=dest_lon-src_lon
+    a=sin(dist_lat/2)**2 + cos(src_lat) * cos(dest_lat) * sin(dist_lon/2)**2
+    c = 2 * asin(sqrt(a)) 
+    # Radius of earth in kilometers. Use 3956 for miles. Determines return value units.
+    R=6371
+    return c*R
+
+def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
+    # Checking for similar destination routes (dest long lat ,source long lat)
+    dest_data=get_same_route(user_dest_lat,user_dest_long)
+    for row in dest_data:
+        # print(json.loads(row))
+        r1=np.asarray(row)
+        #Converting json(string) column from DB to Python list
+        arr_type=json.loads(r1[6])
+        # print(r1[1])  
+        print(len(arr_type))
+        # print('\n')
+
+
 
 def get_fare_info(vehicle):
     # Creating a Dictionary for vehicle fare info
@@ -71,16 +107,15 @@ def get_distance_time():
     # data = res.read()
     # return data
 
-def get_same_route(des_lat,des_long,slat,slong):
+def get_same_route(des_lat,des_long):
     conn=dbconnect()
     # {des_lat:.6f}
     cursor=connection.cursor()
-    start_location=str(slat)+", "+str(slong)
     # print(start_location)
     # SELECT * FROM `routes` where (((24.9085*10000) - CONVERT((slat*10000),INT)) <> 0);
     cursor.execute("SELECT * FROM `routes` where ((({des_lat:.6f}*1000000) - CONVERT((dlat*1000000),INT)) = 0)  AND \
-        ((({des_long:.6f}*1000000) - CONVERT((dlong*1000000),INT)) = 0)  AND croute LIKE '%{s}%'"\
-        .format(s=start_location,des_long=des_long,des_lat=des_lat))
+        ((({des_long:.6f}*1000000) - CONVERT((dlong*1000000),INT)) = 0)"\
+        .format(des_long=des_long,des_lat=des_lat))
     
     return cursor.fetchall()
 
@@ -156,16 +191,16 @@ routeee=json.dumps(coo)
 # cursor.execute("INSERT INTO routes(route_no,complete_route) VALUES(%s,%s)",(routeee))
 # connection.commit()
 
-# Checking for similar destination routes (dest long lat ,source long lat)
-dest_data=get_same_route(24.848005, 66.995209,24.908439,67.221243)
-for row in dest_data:
-    # print(json.loads(row))
-    r1=np.asarray(row)
-    #Converting json(string) column from DB to Python list
-    arr_type=json.loads(r1[6])  
-    # print(len(arr_type))
+# # Checking for similar destination routes (dest long lat ,source long lat)
+# dest_data=get_same_route(24.848005, 66.995209)
+# for row in dest_data:
+#     # print(json.loads(row))
+#     r1=np.asarray(row)
+#     #Converting json(string) column from DB to Python list
+#     arr_type=json.loads(r1[6])  
+#     # print(len(arr_type))
 
-    # print('\n')
+#     # print('\n')
 
 # reading file
 cursor.execute("select croute from routes")
@@ -190,6 +225,10 @@ result=get_distance_time()
 # print(result['rows'][0]['elements'][0]['duration']['value'])
 # print(type(result['rows'][0]['elements'][0]['distance']['value']))
 # print(result.decode("utf-8"))
+
+
+# LOCATE USER TO CAR
+nearest_car=locate_user(24.884121,67.177979,24.933786,67.023636)
 
 
 # GET PRICE FOR RIDE
