@@ -46,8 +46,11 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
         #Converting json(string) column from DB to Python list
         arr_type=json.loads(r1[6])
         # print(r1[1])  
-        print(len(arr_type))
+        # print(arr_type)
+        # print(np.ndim(arr_type)) #return the number of dimensions of an array
         # print('\n')
+    # dist_in_km=find_dist_btw_point(user_src_lat,user_src_long,user_dest_lat,user_dest_long) #Distance function Test 
+    # print(dist_in_km)
 
 
 
