@@ -41,7 +41,6 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
     # Checking for similar destination routes (dest long lat ,source long lat)
     dest_data=get_same_route(user_dest_lat,user_dest_long)
     nearest_riders=[]
-    sort_nearest_riders=[]
     for row in dest_data:
         # print(json.loads(row))
         r1=np.asarray(row)
@@ -60,15 +59,15 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
     for row in range(num_rows):
         dist_in_km=find_dist_btw_point(user_src_lat,user_src_long,arr_type[row][0],arr_type[row][1])
         if(dist_in_km<1.5):
-            nearest_riders.append(dist_in_km)
+            nearest_riders.append(float(format(dist_in_km, '.2f')))
         else:
             # print(dist_in_km)
             continue
     print("Nearest Riders Array")
     print(nearest_riders)
     print("\n Sorted Nearest Riders Array")
-    sort_nearest_riders=nearest_riders.sort()
-    print(sort_nearest_riders)
+    nearest_riders.sort(key = float)
+    print(nearest_riders)
 
 
 
