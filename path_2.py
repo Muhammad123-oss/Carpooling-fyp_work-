@@ -94,7 +94,7 @@ def sys_based_fare_price(result):
     else:
         return fare
 
-# User Base Fare Caculation Based On Distance+Time
+# User Base Fare Caculation Based On Distance+Time///////////
 def user_based_fare_price(result):
     distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
     time_taken=result['rows'][0]['elements'][0]['duration']['value']/60 #ERROR BCZ API WEEK LIMIT EXISTS
