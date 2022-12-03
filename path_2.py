@@ -8,7 +8,7 @@ import json
 import http.client
 import re
 from math import radians, cos, sin, asin, sqrt
-
+import datetime
 
 def dbconnect():
     # database connection
@@ -17,25 +17,66 @@ def dbconnect():
     # some other statements  with the help of cursor
     return connection
 
-    """
-    Calculate the great circle distance in kilometers between two points 
-    on the earth (specified in decimal degrees)
-    """
-def find_dist_btw_point(src_lat,src_lon,dest_lat,dest_lon):
-    """
-    map(fun, iter)
-    fun : It is a function to which map passes each element of given iterable.
-    iter : It is a iterable which is to be mapped.
-    """
-    # Converting decimal degrees to radians
-    src_lat,src_lon,dest_lat,dest_lon=map(radians,[src_lat,src_lon,dest_lat,dest_lon])
-    dist_lat=dest_lat-src_lat
-    dist_lon=dest_lon-src_lon
-    a=sin(dist_lat/2)**2 + cos(src_lat) * cos(dest_lat) * sin(dist_lon/2)**2
-    c = 2 * asin(sqrt(a)) 
-    # Radius of earth in kilometers. Use 3956 for miles. Determines return value units.
-    R=6371
-    return c*R
+def get_directions_response(lat1, long1, lat2, long2, mode='drive'):
+    url = "https://route-and-directions.p.rapidapi.com/v1/routing"
+    querystring = {"waypoints": f"{str(lat1)},{str(long1)}|{str(lat2)},{str(long2)}", "mode": "drive"}
+    headers = {
+        "X-RapidAPI-Key": "889d5281acmsh9a8b0e8a6bdfce3p188328jsna791960c7d91",
+        "X-RapidAPI-Host": "route-and-directions.p.rapidapi.com"
+    }
+    response = requests.request("GET", url, headers=headers, params=querystring)
+    return response
+def create_map(response):
+    # use the response
+    mls = response.json()['features'][0]['geometry']['coordinates']
+    points = [(i[1], i[0]) for i in mls[0]]
+    m = folium.Map()
+
+    # add marker for the start and ending points
+    for point in [points[0], points[-1]]:
+        folium.Marker(point).add_to(m)
+    # add the lines
+    folium.PolyLine(points, weight=5, opacity=1).add_to(m)
+    # create optimal zoom
+    df = pd.DataFrame(mls[0]).rename(columns={0: 'Lon', 1: 'Lat'})[['Lat', 'Lon']]
+    sw = df[['Lat', 'Lon']].min().values.tolist()
+    ne = df[['Lat', 'Lon']].max().values.tolist()
+    m.fit_bounds([sw, ne])
+    return m 
+
+# Adding user marker to map using lat,long
+def add_user_marker_to_map(u_lat,u_long,u_id,m):
+    folium.Marker([u_lat,u_long],
+    popup="user "+ str(u_id)
+    ).add_to(m)
+
+# Add User to DB
+def add_user(u_src_lat,u_src_long,u_dest_lat,u_dest_long):
+    conn=dbconnect()
+    cursor=conn.cursor()
+    # cursor.execute("INSERT INTO `user` (`u_id`, `u_source_lat`, `u_source_long`, `u_dest_lat`, `u_dest_long`, `time`) VALUES ",('2', '24.881155338755885', '67.17119325702504', '24.887094030441283', '67.14344199686458',ts ))
+    cursor.execute("INSERT INTO user(u_source_lat,u_source_long,u_dest_lat,u_dest_long) VALUES(%s,%s,%s,%s)",(u_src_lat,u_src_long,u_dest_lat,u_dest_long))
+    conn.commit()
+
+def read_data_from_db(table):
+    conn=dbconnect()
+    cursor=conn.cursor()
+    cursor.execute("select * from {table}".format(table=table))
+    record=cursor.fetchall()
+    return record
+
+def get_same_route(des_lat,des_long):
+    conn=dbconnect()
+    # {des_lat:.6f}
+    cursor=conn.cursor()
+    # print(start_location)
+    destination_location=str(des_lat)+", "+str(des_long)
+    # SELECT * FROM `routes` where (((24.9085*10000) - CONVERT((slat*10000),INT)) <> 0);
+    # cursor.execute("SELECT * FROM `routes` where ((({des_lat:.6f}*1000000) - CONVERT((dlat*1000000),INT)) = 0)  AND \
+    #     ((({des_long:.6f}*1000000) - CONVERT((dlong*1000000),INT)) = 0)"\
+    #     .format(des_long=des_long,des_lat=des_lat))
+    cursor.execute("SELECT * FROM `routes` where croute LIKE '%{s}%'".format(s=destination_location))
+    return cursor.fetchall()
 
 def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
     # Checking for similar destination routes (dest long lat ,source long lat)
@@ -46,7 +87,7 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
         r1=np.asarray(row)
         #Converting json(string) column from DB to Python list
         arr_type=json.loads(r1[6])
-        # print(r1[1])  
+        print(r1[1])  
         # print(arr_type)
         # print(np.ndim(arr_type)) #return the number of dimensions of an array
         # print('\n')
@@ -69,6 +110,26 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
     nearest_riders.sort(key = float)
     print(nearest_riders)
 
+
+"""
+Calculate the great circle distance in kilometers between two points 
+on the earth (specified in decimal degrees)
+"""
+def find_dist_btw_point(src_lat,src_lon,dest_lat,dest_lon):
+    """
+    map(fun, iter)
+    fun : It is a function to which map passes each element of given iterable.
+    iter : It is a iterable which is to be mapped.
+    """
+    # Converting decimal degrees to radians
+    src_lat,src_lon,dest_lat,dest_lon=map(radians,[src_lat,src_lon,dest_lat,dest_lon])
+    dist_lat=dest_lat-src_lat
+    dist_lon=dest_lon-src_lon
+    a=sin(dist_lat/2)**2 + cos(src_lat) * cos(dest_lat) * sin(dist_lon/2)**2
+    c = 2 * asin(sqrt(a)) 
+    # Radius of earth in kilometers. Use 3956 for miles. Determines return value units.
+    R=6371
+    return c*R
 
 
 def get_fare_info(vehicle):
@@ -94,7 +155,7 @@ def sys_based_fare_price(result):
     else:
         return fare
 
-# User Base Fare Caculation Based On Distance+Time///////////
+# User Base Fare Caculation Based On Distance+Time
 def user_based_fare_price(result):
     distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
     time_taken=result['rows'][0]['elements'][0]['duration']['value']/60 #ERROR BCZ API WEEK LIMIT EXISTS
@@ -127,44 +188,7 @@ def get_distance_time():
     # data = res.read()
     # return data
 
-def get_same_route(des_lat,des_long):
-    conn=dbconnect()
-    # {des_lat:.6f}
-    cursor=connection.cursor()
-    # print(start_location)
-    # SELECT * FROM `routes` where (((24.9085*10000) - CONVERT((slat*10000),INT)) <> 0);
-    cursor.execute("SELECT * FROM `routes` where ((({des_lat:.6f}*1000000) - CONVERT((dlat*1000000),INT)) = 0)  AND \
-        ((({des_long:.6f}*1000000) - CONVERT((dlong*1000000),INT)) = 0)"\
-        .format(des_long=des_long,des_lat=des_lat))
-    
-    return cursor.fetchall()
 
-def get_directions_response(lat1, long1, lat2, long2, mode='drive'):
-    url = "https://route-and-directions.p.rapidapi.com/v1/routing"
-    querystring = {"waypoints": f"{str(lat1)},{str(long1)}|{str(lat2)},{str(long2)}", "mode": "drive"}
-    headers = {
-        "X-RapidAPI-Key": "889d5281acmsh9a8b0e8a6bdfce3p188328jsna791960c7d91",
-        "X-RapidAPI-Host": "route-and-directions.p.rapidapi.com"
-    }
-    response = requests.request("GET", url, headers=headers, params=querystring)
-    return response
-def create_map(response):
-    # use the response
-    mls = response.json()['features'][0]['geometry']['coordinates']
-    points = [(i[1], i[0]) for i in mls[0]]
-    m = folium.Map()
-
-    # add marker for the start and ending points
-    for point in [points[0], points[-1]]:
-        folium.Marker(point).add_to(m)
-    # add the lines
-    folium.PolyLine(points, weight=5, opacity=1).add_to(m)
-    # create optimal zoom
-    df = pd.DataFrame(mls[0]).rename(columns={0: 'Lon', 1: 'Lat'})[['Lat', 'Lon']]
-    sw = df[['Lat', 'Lon']].min().values.tolist()
-    ne = df[['Lat', 'Lon']].max().values.tolist()
-    m.fit_bounds([sw, ne])
-    return m
 def cordinate_to_name(lat,long):
     url = "https://trueway-geocoding.p.rapidapi.com/ReverseGeocode"
     querystring = {"location": f"{str(lat)},{str(long)}", "language": "en"}
@@ -179,97 +203,117 @@ def cordinate_to_name(lat,long):
 
 
 # Main
-# response = get_directions_response(48.34364,10.87474,48.37073,10.909257)
-# response = get_directions_response(24.8904, 67.0911,24.7794, 67.0908)
-
-
-# fast to halt
-response = get_directions_response( 24.908460648396446, 67.220800769881,24.848005654110313, 66.99520521035566)
-
-m = create_map(response)
-m.save('./route_map.html')
-
-
-routeArray =[]
-coo=[]
-total_cood=len(response.json()['features'][0]['geometry']['coordinates'][0])
-# print(total_cood)
-#gap=total_cood/5
-# print(int(gap))
-for y in response.json()['features'][0]['geometry']['coordinates'][0]:        #[::int(gap)]:
-    coo.append([y[1],y[0]])
-
 
 # setting up database
 connection=dbconnect()
 cursor=connection.cursor()
-routeee=json.dumps(coo)
+
+# response = get_directions_response(48.34364,10.87474,48.37073,10.909257)
+# response = get_directions_response(24.8904, 67.0911,24.7794, 67.0908)
+# fast to halt: 24.908460648396446, 67.220800769881,24.848005654110313, 66.99520521035566
+# halt to luckyone: 24.884609570015506, 67.17634308152044,24.93263472395275, 67.08725306802955
+
+
+response = get_directions_response(24.884609570015506, 67.17634308152044,24.93263472395275, 67.08725306802955)
+m = create_map(response)
+# m.save('./route_map.html')
+
+# Adding User to DB
+# add_user(24.881155338755885,67.17119325702504,24.887094030441283,67.14344199686458)
+# add_user(24.915400208475877, 67.10005999686508,24.933473, 67.085896)
+# add_user(24.922868867283775,67.09273973268596,24.933467, 67.087321)
+# add_user(24.916987109609163,67.09639826577977,24.933391, 67.087562)
+
+
+# Call for adding User Marker
+# add_user_marker_to_map(24.881155338755885, 67.17119325702504,1,m)
+user_info=read_data_from_db("user")
+for row in user_info:
+    r1=np.asarray(row)
+    add_user_marker_to_map(r1[1],r1[2],r1[0],m)
+    # print(r1[0])
+m.save('./route_map.html')
+locate_user(24.881155338755885,67.17119325702504,24.885525, 67.16771)
+# routeArray =[]
+# coo=[]
+# total_cood=len(response.json()['features'][0]['geometry']['coordinates'][0])
+# # print(total_cood)
+# #gap=total_cood/5
+# # print(int(gap))
+# for y in response.json()['features'][0]['geometry']['coordinates'][0]:        #[::int(gap)]:
+#     coo.append([y[1],y[0]])
+
+
+# setting up database
+# connection=dbconnect()
+# cursor=connection.cursor()
+# routeee=json.dumps(coo)
 # print(routeee)
-# cursor.execute("INSERT INTO routes(name,slat,slong,dlat,dlong,croute) VALUES(%s,%s,%s,%s,%s,%s)",('r2',24.908460648396446, 67.220800769881,24.848005654110313, 66.99520521035566,routeee))
+# cursor.execute("INSERT INTO routes(name,slat,slong,dlat,dlong,croute) VALUES(%s,%s,%s,%s,%s,%s)",('r2',24.884609570015506, 67.17634308152044,24.93263472395275, 67.08725306802955,routeee))
 
-# No new table required if we are going for each row a route. Helpful when multiple route has same path
+# # No new table required if we are going for each row a route. Helpful when multiple route has same path
 # cursor.execute("INSERT INTO routes(route_no,complete_route) VALUES(%s,%s)",(routeee))
-# connection.commit()
+connection.commit()
 
-# # Checking for similar destination routes (dest long lat ,source long lat)
-# dest_data=get_same_route(24.848005, 66.995209)
-# for row in dest_data:
+# # # Checking for similar destination routes (dest long lat ,source long lat)
+# # dest_data=get_same_route(24.848005, 66.995209)
+# # for row in dest_data:
+# #     # print(json.loads(row))
+# #     r1=np.asarray(row)
+# #     #Converting json(string) column from DB to Python list
+# #     arr_type=json.loads(r1[6])  
+# #     # print(len(arr_type))
+
+# #     # print('\n')
+
+# # reading file
+# cursor.execute("select croute from routes")
+# record=cursor.fetchall()
+
+# for row in record:
 #     # print(json.loads(row))
 #     r1=np.asarray(row)
-#     #Converting json(string) column from DB to Python list
-#     arr_type=json.loads(r1[6])  
-#     # print(len(arr_type))
+#     # print(r1[0])
 
 #     # print('\n')
 
-# reading file
-cursor.execute("select croute from routes")
-record=cursor.fetchall()
-
-for row in record:
-    # print(json.loads(row))
-    r1=np.asarray(row)
-    # print(r1[0])
-
-    # print('\n')
-
-# print(routeArray)
-# result=cordinate_to_name(24.8961, 67.0814)
-# for x in result['results']:
-#     if(x['location_type']=='exact'):
-#         print(x['sublocality'])uuuuuuuyujkk 
+# # print(routeArray)
+# # result=cordinate_to_name(24.8961, 67.0814)
+# # for x in result['results']:
+# #     if(x['location_type']=='exact'):
+# #         print(x['sublocality'])uuuuuuuyujkk 
 
 
-# GET TWO CO-ORDINATE DISTANCE AND TIME
-result=get_distance_time()
-# print(result['rows'][0]['elements'][0]['duration']['value'])
-# print(type(result['rows'][0]['elements'][0]['distance']['value']))
-# print(result.decode("utf-8"))
+# # GET TWO CO-ORDINATE DISTANCE AND TIME
+# result=get_distance_time()
+# # print(result['rows'][0]['elements'][0]['duration']['value'])
+# # print(type(result['rows'][0]['elements'][0]['distance']['value']))
+# # print(result.decode("utf-8"))
 
 
-# LOCATE USER TO CAR
-nearest_car=locate_user(24.884121,67.177979,24.933786,67.023636)
+# # LOCATE USER TO CAR
+# nearest_car=locate_user(24.884121,67.177979,24.933786,67.023636)
 
 
-# GET PRICE FOR RIDE
+# # GET PRICE FOR RIDE
 
-# fare=sys_based_fare_price(result)
-# print(fare)
-fare=0
-print("1.System Based Calculation \n 2.User Based Calculation \n 3.User Based Calculation only time\n")
-user_choice=int(input("Kindly Select AnyOne Option "))
-match user_choice:
-    case 1:
-       fare=sys_based_fare_price(result)
-    case 2:
-        fare=user_based_fare_price(result)
-    case 3:
-        fare=user_based_fare_price_on_distance(result)
-    case _:
-        print("Kindly Select right option")   
+# # fare=sys_based_fare_price(result)
+# # print(fare)
+# fare=0
+# print("1.System Based Calculation \n 2.User Based Calculation \n 3.User Based Calculation only time\n")
+# user_choice=int(input("Kindly Select AnyOne Option "))
+# match user_choice:
+#     case 1:
+#        fare=sys_based_fare_price(result)
+#     case 2:
+#         fare=user_based_fare_price(result)
+#     case 3:
+#         fare=user_based_fare_price_on_distance(result)
+#     case _:
+#         print("Kindly Select right option")   
 
 
-if fare==0:
-    print("Sorry You Select a wrong choice")
-else:
-    print(fare)
+# if fare==0:
+#     print("Sorry You Select a wrong choice")
+# else:
+#     print(fare)
