@@ -26,6 +26,27 @@ def get_directions_response(lat1, long1, lat2, long2, mode='drive'):
     }
     response = requests.request("GET", url, headers=headers, params=querystring)
     return response
+
+# Add Routes to DB
+def route_to_db(response,slat,slong,dlat,dlong):
+    routeArray =[]
+    coo=[]
+    total_cood=len(response.json()['features'][0]['geometry']['coordinates'][0])
+    # print(total_cood)
+    #gap=total_cood/5
+    # print(int(gap))
+    for y in response.json()['features'][0]['geometry']['coordinates'][0]:        #[::int(gap)]:
+        coo.append([y[1],y[0]])
+
+
+    # setting up database
+    connection=dbconnect()
+    cursor=connection.cursor()
+    routeee=json.dumps(coo)
+    # print(routeee)
+    cursor.execute("INSERT INTO routes(name,slat,slong,dlat,dlong,croute) VALUES(%s,%s,%s,%s,%s,%s)",('r4',slat,slong,dlat,dlong,routeee))
+    connection.commit()
+
 def create_map(response):
     # use the response
     mls = response.json()['features'][0]['geometry']['coordinates']
@@ -81,34 +102,53 @@ def get_same_route(des_lat,des_long):
 def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
     # Checking for similar destination routes (dest long lat ,source long lat)
     dest_data=get_same_route(user_dest_lat,user_dest_long)
-    nearest_riders=[]
-    for row in dest_data:
-        # print(json.loads(row))
-        r1=np.asarray(row)
-        #Converting json(string) column from DB to Python list
-        arr_type=json.loads(r1[6])
-        print(r1[1])  
-        # print(arr_type)
-        # print(np.ndim(arr_type)) #return the number of dimensions of an array
-        # print('\n')
-    # print(arr_type[0])
-    # dist_in_km=find_dist_btw_point(user_src_lat,user_src_long,user_dest_lat,user_dest_long) #Distance function Test 
-    # print(dist_in_km)
-    num_rows=len(arr_type)
-    num_columns=len(arr_type[0])
-    # Calculating User Distance from Vehicle Route lat,lon
-    for row in range(num_rows):
-        dist_in_km=find_dist_btw_point(user_src_lat,user_src_long,arr_type[row][0],arr_type[row][1])
-        if(dist_in_km<1.5):
-            nearest_riders.append(float(format(dist_in_km, '.2f')))
-        else:
-            # print(dist_in_km)
-            continue
-    print("Nearest Riders Array")
-    print(nearest_riders)
-    print("\n Sorted Nearest Riders Array")
-    nearest_riders.sort(key = float)
-    print(nearest_riders)
+    cmp_route_arr=[]
+    if(dest_data):
+        nearest_riders_arr=[]
+        for row in dest_data:
+            # print(json.loads(row))
+            r1=np.asarray(row)
+            #Converting json(string) column from DB to Python list
+            cmp_route=json.loads(r1[6])
+            print(r1[1])
+            print(len(cmp_route))
+            # print(cmp_route) 
+            cmp_route_arr.append(cmp_route) 
+            # print(cmp_route)
+            # print(np.ndim(cmp_route)) #return the number of dimensions of an array
+            # print('\n')
+        # print(cmp_route[0])
+        # dist_in_km=find_dist_btw_point(user_src_lat,user_src_long,user_dest_lat,user_dest_long) #Distance function Test 
+        # print(dist_in_km)
+
+        num_rows=len(cmp_route_arr)
+        print("ARRAY VAL")
+        # print(cmp_route_arr)
+        # Calculating User Distance from Vehicle Route lat,lon
+        for route in range(num_rows):
+            route_len=len(cmp_route_arr[route])
+            print(route_len)
+            nearest_riders=[]
+            for row in range(route_len):
+                dist_in_km=find_dist_btw_point(user_src_lat,user_src_long,cmp_route_arr[route][row][0],cmp_route_arr[route][row][1])
+                if(dist_in_km<1.5):
+                    nearest_riders.append(float(format(dist_in_km, '.2f')))
+                else:
+                    # print(dist_in_km)
+                    continue
+            nearest_riders_arr.append(nearest_riders)
+
+        print("Nearest Riders Array")
+        print(len(nearest_riders_arr))
+        available_rides=len(nearest_riders_arr)
+        for index in range(available_rides):
+            print(nearest_riders_arr[index])
+
+        # print("\n Sorted Nearest Riders Array")
+        # nearest_riders.sort(key = float)
+        # print(nearest_riders)
+    else:
+        print("No ride Available")
 
 
 """
@@ -208,15 +248,20 @@ def cordinate_to_name(lat,long):
 connection=dbconnect()
 cursor=connection.cursor()
 
+slat=24.908460648396446
+slong= 67.220800769881
+dlat=24.7794
+dlong= 67.0908
 # response = get_directions_response(48.34364,10.87474,48.37073,10.909257)
-# response = get_directions_response(24.8904, 67.0911,24.7794, 67.0908)
+response = get_directions_response(slat,slong,dlat,dlong)
 # fast to halt: 24.908460648396446, 67.220800769881,24.848005654110313, 66.99520521035566
 # halt to luckyone: 24.884609570015506, 67.17634308152044,24.93263472395275, 67.08725306802955
 
 
-response = get_directions_response(24.884609570015506, 67.17634308152044,24.93263472395275, 67.08725306802955)
+# response = get_directions_response(24.884609570015506, 67.17634308152044,24.93263472395275, 67.08725306802955)
+# response=get_directions_response(24.908460648396446, 67.220800769881,24.848005654110313, 66.99520521035566)
 m = create_map(response)
-# m.save('./route_map.html')
+# m.save('./route_map.`html')
 
 # Adding User to DB
 # add_user(24.881155338755885,67.17119325702504,24.887094030441283,67.14344199686458)
@@ -233,26 +278,13 @@ for row in user_info:
     add_user_marker_to_map(r1[1],r1[2],r1[0],m)
     # print(r1[0])
 m.save('./route_map.html')
-locate_user(24.881155338755885,67.17119325702504,24.885525, 67.16771)
-# routeArray =[]
-# coo=[]
-# total_cood=len(response.json()['features'][0]['geometry']['coordinates'][0])
-# # print(total_cood)
-# #gap=total_cood/5
-# # print(int(gap))
-# for y in response.json()['features'][0]['geometry']['coordinates'][0]:        #[::int(gap)]:
-#     coo.append([y[1],y[0]])
+locate_user(24.881155338755885,67.17119325702504,24.779736, 67.090401)
 
 
-# setting up database
-# connection=dbconnect()
-# cursor=connection.cursor()
-# routeee=json.dumps(coo)
-# print(routeee)
-# cursor.execute("INSERT INTO routes(name,slat,slong,dlat,dlong,croute) VALUES(%s,%s,%s,%s,%s,%s)",('r2',24.884609570015506, 67.17634308152044,24.93263472395275, 67.08725306802955,routeee))
-
-# # No new table required if we are going for each row a route. Helpful when multiple route has same path
+# No new table required if we are going for each row a route. Helpful when multiple route has same path
 # cursor.execute("INSERT INTO routes(route_no,complete_route) VALUES(%s,%s)",(routeee))
+
+# route_to_db(response,slat,slong,dlat,dlong)
 connection.commit()
 
 # # # Checking for similar destination routes (dest long lat ,source long lat)
@@ -261,8 +293,8 @@ connection.commit()
 # #     # print(json.loads(row))
 # #     r1=np.asarray(row)
 # #     #Converting json(string) column from DB to Python list
-# #     arr_type=json.loads(r1[6])  
-# #     # print(len(arr_type))
+# #     cmp_route=json.loads(r1[6])  
+# #     # print(len(cmp_route))
 
 # #     # print('\n')
 
