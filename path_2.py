@@ -10,6 +10,7 @@ import re
 from math import radians, cos, sin, asin, sqrt
 import datetime
 
+
 def dbconnect():
     # database connection
     connection = pymysql.connect(host="localhost", user="root", passwd="", database="carpooling")
@@ -27,8 +28,29 @@ def get_directions_response(lat1, long1, lat2, long2, mode='drive'):
     response = requests.request("GET", url, headers=headers, params=querystring)
     return response
 
+# Select fare type
+def select_fare_type():
+    print("1.System Based Calculation \n 2.User Based Calculation on distance and time \n 3.User Based Calculation only distance\n")
+    user_choice=int(input("Kindly Select AnyOne Option "))    
+    match user_choice:
+        case 1:
+            fare_type="system"
+            return fare_type
+        case 2:
+            fare_type="distance_time"
+            return fare_type
+        case 3:
+            fare_type="distance"
+            return fare_type
+        case _:
+            print("Kindly Select right option")
+            select_fare_type()
+
 # Add Routes to DB
 def route_to_db(response,slat,slong,dlat,dlong):
+    route_name=input("Enter route Name: ")
+    fare_type=select_fare_type()
+    print(fare_type)
     routeArray =[]
     coo=[]
     total_cood=len(response.json()['features'][0]['geometry']['coordinates'][0])
@@ -44,7 +66,8 @@ def route_to_db(response,slat,slong,dlat,dlong):
     cursor=connection.cursor()
     routeee=json.dumps(coo)
     # print(routeee)
-    cursor.execute("INSERT INTO routes(name,slat,slong,dlat,dlong,croute) VALUES(%s,%s,%s,%s,%s,%s)",('r4',slat,slong,dlat,dlong,routeee))
+
+    cursor.execute("INSERT INTO routes(name,slat,slong,dlat,dlong,fare_type,croute) VALUES(%s,%s,%s,%s,%s,%s,%s)",(route_name,slat,slong,dlat,dlong,fare_type,routeee))
     connection.commit()
 
 def create_map(response):
@@ -68,7 +91,8 @@ def create_map(response):
 # Adding user marker to map using lat,long
 def add_user_marker_to_map(u_lat,u_long,u_id,m):
     folium.Marker([u_lat,u_long],
-    popup="user "+ str(u_id)
+    popup="user "+ str(u_id),
+    icon=folium.Icon(color="blue",icon="user", prefix='fa')
     ).add_to(m)
 
 # Add User to DB
@@ -99,19 +123,36 @@ def get_same_route(des_lat,des_long):
     cursor.execute("SELECT * FROM `routes` where croute LIKE '%{s}%'".format(s=destination_location))
     return cursor.fetchall()
 
+def calculate_fare_for_user(result,user_choice):
+    print(user_choice)
+    match user_choice:
+        case 'system':
+            fare=sys_based_fare_price(result)
+            return fare
+        case 'distance_time':
+            fare=user_based_fare_price(result)
+            return fare
+        case 'distance':
+            fare=user_based_fare_price_on_distance(result)
+            return fare
+        case _:
+            print("Invalid")
+
 def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
     # Checking for similar destination routes (dest long lat ,source long lat)
     dest_data=get_same_route(user_dest_lat,user_dest_long)
     cmp_route_arr=[]
+    fare_type_selection=[]
     if(dest_data):
-        nearest_riders_arr=[]
         for row in dest_data:
             # print(json.loads(row))
             r1=np.asarray(row)
             #Converting json(string) column from DB to Python list
-            cmp_route=json.loads(r1[6])
-            print(r1[1])
-            print(len(cmp_route))
+            cmp_route=json.loads(r1[7])         
+            # print(r1[1])
+            fare_type_selection.append(r1[6])
+            # print(r1[6])
+            # print(len(cmp_route))
             # print(cmp_route) 
             cmp_route_arr.append(cmp_route) 
             # print(cmp_route)
@@ -123,32 +164,80 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
 
         num_rows=len(cmp_route_arr)
         print("ARRAY VAL")
+        nearest_dest={}
         # print(cmp_route_arr)
         # Calculating User Distance from Vehicle Route lat,lon
+        count=0
         for route in range(num_rows):
             route_len=len(cmp_route_arr[route])
-            print(route_len)
-            nearest_riders=[]
+            driver_choice=fare_type_selection[route]
+            nearest_path_available=False
+            min =999
+            pickup_point_lat=0.0
+            pickup_point_long=0.0
             for row in range(route_len):
                 dist_in_km=find_dist_btw_point(user_src_lat,user_src_long,cmp_route_arr[route][row][0],cmp_route_arr[route][row][1])
-                if(dist_in_km<1.5):
-                    nearest_riders.append(float(format(dist_in_km, '.2f')))
+                if(dist_in_km<8.5):
+                    if(dist_in_km<min):
+                        # getting minimum dist in 'min' variable and storing it's lat/long
+                        nearest_path_available=True
+                        min=dist_in_km
+                        pickup_point_lat= cmp_route_arr[route][row][0]
+                        pickup_point_long= cmp_route_arr[route][row][1]
+
+
+                    #  For Knowledge: float(format(dist_in_km, '.2f')) If we want to get float value upto 2 decimal points
                 else:
                     # print(dist_in_km)
                     continue
-            nearest_riders_arr.append(nearest_riders)
-
-        print("Nearest Riders Array")
-        print(len(nearest_riders_arr))
-        available_rides=len(nearest_riders_arr)
-        for index in range(available_rides):
-            print(nearest_riders_arr[index])
-
-        # print("\n Sorted Nearest Riders Array")
-        # nearest_riders.sort(key = float)
-        # print(nearest_riders)
+            # Nested 'for loop' body ends here
+            if(nearest_path_available):
+                name='route'+str(count) #Setting a name for nested dictionary  
+                nearest_dest[name]={} #Initializing a dictionary that to be nested in a 'nearest_dest{}'
+                nearest_dest[name]['min']=min
+                nearest_dest[name]['lat']=pickup_point_lat
+                nearest_dest[name]['long']=pickup_point_long
+                result=get_distance_time()
+                nearest_dest[name]['ride_fare']=calculate_fare_for_user(result,driver_choice)
+                count=count+1
+        #'for loop' body ends here
+        # print("Nearest KEY Riders Array")
+        # print(nearest_dest)
+        return nearest_dest
     else:
         print("No ride Available")
+        return 'Sorry'
+
+def cordinate_to_name(lat,long):
+    url = "https://trueway-geocoding.p.rapidapi.com/ReverseGeocode"
+    querystring = {"location": f"{str(lat)},{str(long)}", "language": "en"}
+    headers = {
+        "X-RapidAPI-Key": "889d5281acmsh9a8b0e8a6bdfce3p188328jsna791960c7d91",
+        "X-RapidAPI-Host": "trueway-geocoding.p.rapidapi.com"
+    }
+    response = requests.request("GET", url, headers=headers, params=querystring)
+    return response.json()
+    #print(response.text)
+
+"""
+Setting Markers to nearest available vehicles
+"""
+def put_markers_to_nearest_vehicles(available_rides,m):
+    print(available_rides)
+    # print(type(available_rides['route0']['lat']))
+    for points in available_rides:
+        response=cordinate_to_name(available_rides[points]['lat'],available_rides[points]['long'])
+        # print(response)
+        for location_name in response['results']:
+            if(location_name['location_type']=='centroid'):
+                print(location_name['address'])
+                folium.Marker([available_rides[points]['lat'],available_rides[points]['long']],
+                popup=location_name['address'],
+                icon=folium.Icon(color="green",icon="car", prefix='fa')
+                ).add_to(m)
+                break
+        # end of inner loop
+    # end of outer loop
 
 
 """
@@ -182,10 +271,10 @@ def get_fare_info(vehicle):
 
 # System Base Fare Caculation Based On Distance+Time
 def sys_based_fare_price(result):
-    distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
-    time_taken=result['rows'][0]['elements'][0]['duration']['value']/60 #ERROR BCZ API WEEK LIMIT EXISTS
-    # distance_travel=10 # I hardcoded as i have an error
-    # time_taken=5 # I hardcoded as i have an error
+    # distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
+    # time_taken=result['rows'][0]['elements'][0]['duration']['value']/60 #ERROR BCZ API WEEK LIMIT EXISTS
+    distance_travel=10 # I hardcoded as i have an error
+    time_taken=5 # I hardcoded as i have an error
     car_info=get_fare_info("mini")
     # print(time_taken)
     # print(car_info['base_fee'])
@@ -219,7 +308,7 @@ def user_based_fare_price_on_distance(result):
 
 
 def get_distance_time():
-    query={"origins":"24.878937747538565,67.1884669257004","destinations":"24.857142456865084,67.26475889871588","departure_time":"now","key":"ntTWUnz82Npcyzj2xFj0yT8vojEjJ"}
+    query={"origins":"24.878937747538565,67.1884669257004","destinations":"24.857142456865084,67.26475889871588","departure_time":"now","key":"efdyNURa3j71WqUimAmpJzAtnG359"}
     response=requests.get("https://api.distancematrix.ai/maps/api/distancematrix/json",params=query)
     return response.json()
     # conn = http.client.HTTPSConnection("api.distancematrix.ai")
@@ -229,17 +318,6 @@ def get_distance_time():
     # return data
 
 
-def cordinate_to_name(lat,long):
-    url = "https://trueway-geocoding.p.rapidapi.com/ReverseGeocode"
-    querystring = {"location": f"{str(lat)},{str(long)}", "language": "en"}
-    headers = {
-        "X-RapidAPI-Key": "889d5281acmsh9a8b0e8a6bdfce3p188328jsna791960c7d91",
-        "X-RapidAPI-Host": "trueway-geocoding.p.rapidapi.com"
-    }
-    response = requests.request("GET", url, headers=headers, params=querystring)
-    return response.json()
-    #print(response.text)
-
 
 
 # Main
@@ -248,19 +326,20 @@ def cordinate_to_name(lat,long):
 connection=dbconnect()
 cursor=connection.cursor()
 
-slat=24.908460648396446
-slong= 67.220800769881
-dlat=24.7794
-dlong= 67.0908
+slat=24.77954760427206
+slong=67.09080664088563
+dlat=24.855828584328297
+dlong=67.0284733543784
+
+# moin khan to zainab market: 24.77954760427206, 67.09080664088563,24.855828584328297, 67.0284733543784
 # response = get_directions_response(48.34364,10.87474,48.37073,10.909257)
-response = get_directions_response(slat,slong,dlat,dlong)
 # fast to halt: 24.908460648396446, 67.220800769881,24.848005654110313, 66.99520521035566
 # halt to luckyone: 24.884609570015506, 67.17634308152044,24.93263472395275, 67.08725306802955
 
-
-# response = get_directions_response(24.884609570015506, 67.17634308152044,24.93263472395275, 67.08725306802955)
-# response=get_directions_response(24.908460648396446, 67.220800769881,24.848005654110313, 66.99520521035566)
+response = get_directions_response(slat,slong,dlat,dlong)
+# route_to_db(response,slat,slong,dlat,dlong)
 m = create_map(response)
+
 # m.save('./route_map.`html')
 
 # Adding User to DB
@@ -277,10 +356,11 @@ for row in user_info:
     r1=np.asarray(row)
     add_user_marker_to_map(r1[1],r1[2],r1[0],m)
     # print(r1[0])
+
+
+available_rides=locate_user(24.881155338755885,67.17119325702504,24.779736, 67.090401)
+put_markers_to_nearest_vehicles(available_rides,m)
 m.save('./route_map.html')
-locate_user(24.881155338755885,67.17119325702504,24.779736, 67.090401)
-
-
 # No new table required if we are going for each row a route. Helpful when multiple route has same path
 # cursor.execute("INSERT INTO routes(route_no,complete_route) VALUES(%s,%s)",(routeee))
 

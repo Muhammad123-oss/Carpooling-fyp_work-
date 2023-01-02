@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+     integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI="
+     crossorigin=""/>
+     <!-- Make sure you put this AFTER Leaflet's CSS -->
+ <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"
+ integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM="
+ crossorigin=""></script>
+    <title>Document</title>
+</head>
+<body>
+    <h1>HEY!FAIZ</h1>
+    <div id="map" style="height: 500px; width: 500px;"></div>
+    <script>
+        var locations = [
+  ["LOCATION_1", 11.8166, 122.0942],
+  ["LOCATION_2", 11.9804, 121.9189],
+  ["LOCATION_3", 10.7202, 122.5621],
+  ["LOCATION_4", 11.3889, 122.6277],
+  ["LOCATION_5", 10.5929, 122.6325]
+];
+
+    var map = L.map('map').setView([11.8166, 122.0942], 23);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 13,
+    attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+}).addTo(map);
+for (var i = 0; i < locations.length; i++) {
+  marker = new L.marker([locations[i][1], locations[i][2]])
+    .bindPopup(locations[i][0])
+    .addTo(map);
+}
+// var marker = L.marker([24.8607, 67.0011]).addTo(map);
+    </script>
+</body>
+</html>
