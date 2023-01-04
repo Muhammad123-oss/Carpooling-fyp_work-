@@ -144,7 +144,6 @@ def calculate_fare_for_user(result,user_choice):
 def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
     # Checking for similar destination routes (dest long lat ,source long lat)
     dest_data=get_same_route(user_dest_lat,user_dest_long)
-    # print(dest_data)
     cmp_route_arr=[]
     fare_type_selection=[]
     if(dest_data):
@@ -181,7 +180,7 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
             pickup_point_long=0.0
             for row in range(route_len):
                 dist_in_km=find_dist_btw_point(user_src_lat,user_src_long,cmp_route_arr[route][row][0],cmp_route_arr[route][row][1])
-                if(dist_in_km<1.5):
+                if(dist_in_km<8.5):
                     if(dist_in_km<min):
                         # getting minimum dist in 'min' variable and storing it's lat/long
                         nearest_path_available=True
@@ -207,14 +206,11 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
         #'for loop' body ends here
         # print("Nearest KEY Riders Array")
         # print(nearest_dest)
-        if(nearest_dest):
-            return nearest_dest
-        else:
-            print("No ride nearby .. ")
-            return None
+        return nearest_dest
     else:
         print("No ride Available")
-        return None
+        sorry="sorry"
+        return sorry
 
 def cordinate_to_name(lat,long):
     url = "https://trueway-geocoding.p.rapidapi.com/ReverseGeocode"
@@ -345,32 +341,37 @@ def display_ride_details(available_rides,pickup_point_names):
     # print(pickup_point_names)
 
 
-# Main 
+# Main
 
 # setting up database
 connection=dbconnect()
 cursor=connection.cursor()
 
-# # ROUTES -->
-# # Fast to Tower : 24.857008405532916, 67.26464745910047 ,24.8515870, 66.996767
-# # malir cantt to Tower : 24.934510990824176, 67.17714789896337 ,24.8515870, 66.996767
-# # shah faisal to Tower : 24.866176365450084, 67.1526977487848,24.8515870, 66.996767
-slat=24.866176365450084
-slong= 67.1526977487848
-dlat=24.8515877096092
-dlong= 66.99678535095585
+slat=24.77954760427206
+slong=67.09080664088563
+dlat=24.855828584328297
+dlong=67.0284733543784
+
+# moin khan to zainab market: 24.77954760427206, 67.09080664088563,24.855828584328297, 67.0284733543784
+# response = get_directions_response(48.34364,10.87474,48.37073,10.909257)
+# fast to halt: 24.908460648396446, 67.220800769881,24.848005654110313, 66.99520521035566
+# halt to luckyone: 24.884609570015506, 67.17634308152044,24.93263472395275, 67.08725306802955
 
 response = get_directions_response(slat,slong,dlat,dlong)
 # route_to_db(response,slat,slong,dlat,dlong)
 m = create_map(response)
 
+# m.save('./route_map.`html')
+
 # Adding User to DB
-# add_user(24.873003196931517, 67.09391657264112,24.8515877096092, 66.99678535095585)        # PAF
-# add_user(24.886326091465836, 67.16379554405404,24.8515877096092, 66.99678535095585)        # Star Gate
-# add_user(24.854539874358366, 67.22828180732928,24.8515877096092, 66.99678535095585)        # Quaidabad
-# add_user(24.908267870424428, 67.13546172371537,24.8515877096092, 66.99678535095585)        # Habib uni 
+# add_user(24.881155338755885,67.17119325702504,24.887094030441283,67.14344199686458)
+# add_user(24.915400208475877, 67.10005999686508,24.933473, 67.085896)
+# add_user(24.922868867283775,67.09273973268596,24.933467, 67.087321)
+# add_user(24.916987109609163,67.09639826577977,24.933391, 67.087562)
+
 
 # Call for adding User Marker
+# add_user_marker_to_map(24.881155338755885, 67.17119325702504,1,m)
 user_info=read_data_from_db("user")
 for row in user_info:
     r1=np.asarray(row)
@@ -378,12 +379,75 @@ for row in user_info:
     # print(r1[0])
 
 
-available_rides=locate_user(24.854539874358366,67.22828180732928,24.851570, 66.996767)     # user at quaidabad
-# available_rides=locate_user(24.886326091465836, 67.16379554405404,24.851570, 66.996767)    # user at star gate
-# available_rides=locate_user(24.873003196931517, 67.09391657264112,24.851570, 66.996767)    # user at PAF
-# available_rides=locate_user(24.908267870424428, 67.13546172371537,24.851570, 66.996767)    # user at Habib uni
-if(available_rides):
-    pickup_point_names=put_markers_to_nearest_vehicles(available_rides,m)
-    display_ride_details(available_rides,pickup_point_names)
+available_rides=locate_user(24.881155338755885,67.17119325702504,24.779736, 67.090401)
+pickup_point_names=put_markers_to_nearest_vehicles(available_rides,m)
+display_ride_details(available_rides,pickup_point_names)
 m.save('./route_map.html')
+# No new table required if we are going for each row a route. Helpful when multiple route has same path
+# cursor.execute("INSERT INTO routes(route_no,complete_route) VALUES(%s,%s)",(routeee))
+
+# route_to_db(response,slat,slong,dlat,dlong)
 connection.commit()
+
+# # # Checking for similar destination routes (dest long lat ,source long lat)
+# # dest_data=get_same_route(24.848005, 66.995209)
+# # for row in dest_data:
+# #     # print(json.loads(row))
+# #     r1=np.asarray(row)
+# #     #Converting json(string) column from DB to Python list
+# #     cmp_route=json.loads(r1[6])  
+# #     # print(len(cmp_route))
+
+# #     # print('\n')
+
+# # reading file
+# cursor.execute("select croute from routes")
+# record=cursor.fetchall()
+
+# for row in record:
+#     # print(json.loads(row))
+#     r1=np.asarray(row)
+#     # print(r1[0])
+
+#     # print('\n')
+
+# # print(routeArray)
+# # result=cordinate_to_name(24.8961, 67.0814)
+# # for x in result['results']:
+# #     if(x['location_type']=='exact'):
+# #         print(x['sublocality'])uuuuuuuyujkk 
+
+
+# # GET TWO CO-ORDINATE DISTANCE AND TIME
+# result=get_distance_time()
+# # print(result['rows'][0]['elements'][0]['duration']['value'])
+# # print(type(result['rows'][0]['elements'][0]['distance']['value']))
+# # print(result.decode("utf-8"))
+
+
+# # LOCATE USER TO CAR
+# nearest_car=locate_user(24.884121,67.177979,24.933786,67.023636)
+
+
+# # GET PRICE FOR RIDE
+
+# # fare=sys_based_fare_price(result)
+# # print(fare)
+# fare=0
+# print("1.System Based Calculation \n 2.User Based Calculation \n 3.User Based Calculation only time\n")
+# user_choice=int(input("Kindly Select AnyOne Option "))
+# match user_choice:
+#     case 1:
+#        fare=sys_based_fare_price(result)
+#     case 2:
+#         fare=user_based_fare_price(result)
+#     case 3:
+#         fare=user_based_fare_price_on_distance(result)
+#     case _:
+#         print("Kindly Select right option")   
+
+
+# if fare==0:
+#     print("Sorry You Select a wrong choice")
+# else:
+#     print(fare)
