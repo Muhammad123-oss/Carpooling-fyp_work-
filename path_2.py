@@ -181,7 +181,7 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
             pickup_point_long=0.0
             for row in range(route_len):
                 dist_in_km=find_dist_btw_point(user_src_lat,user_src_long,cmp_route_arr[route][row][0],cmp_route_arr[route][row][1])
-                if(dist_in_km<1.5):
+                if(dist_in_km<2.0):
                     if(dist_in_km<min):
                         # getting minimum dist in 'min' variable and storing it's lat/long
                         nearest_path_available=True
@@ -282,10 +282,10 @@ def get_fare_info(vehicle):
 
 # System Base Fare Caculation Based On Distance+Time
 def sys_based_fare_price(result):
-    distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
-    time_taken=result['rows'][0]['elements'][0]['duration']['value']/60 #ERROR BCZ API WEEK LIMIT EXISTS
-    # distance_travel=10 # I hardcoded as i have an error
-    # time_taken=5 # I hardcoded as i have an error
+    # distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
+    # time_taken=result['rows'][0]['elements'][0]['duration']['value']/60 #ERROR BCZ API WEEK LIMIT EXISTS
+    distance_travel=10 # I hardcoded as i have an error
+    time_taken=5 # I hardcoded as i have an error
     car_info=get_fare_info("mini")
     # print(time_taken)
     # print(car_info['base_fee'])
@@ -297,10 +297,10 @@ def sys_based_fare_price(result):
 
 # User Base Fare Caculation Based On Distance+Time
 def user_based_fare_price(result):
-    distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
-    time_taken=result['rows'][0]['elements'][0]['duration']['value']/60 #ERROR BCZ API WEEK LIMIT EXISTS
-    # distance_travel=10 # I hardcoded as i have an error
-    # time_taken=5 # I hardcoded as i have an error
+    # distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
+    # time_taken=result['rows'][0]['elements'][0]['duration']['value']/60 #ERROR BCZ API WEEK LIMIT EXISTS
+    distance_travel=10 # I hardcoded as i have an error
+    time_taken=5 # I hardcoded as i have an error
     fare_per_km=float(input("How much fare per km you want to charge: "))
     fare_per_min=float(input("How much fare per minute you want to charge: "))
     car_info=get_fare_info("mini")
@@ -330,6 +330,13 @@ def get_distance_time(src_lat,src_long,dest_lat,dest_long):
     # data = res.read()
     # return data
 
+def insert_driver_details(Driver_Name,Car_name,Car_num,color,Driver_phone_num,num_of_seats):
+    conn=dbconnect()
+    cursor=conn.cursor()
+    # cursor.execute("INSERT INTO `user` (`u_id`, `u_source_lat`, `u_source_long`, `u_dest_lat`, `u_dest_long`, `time`) VALUES ",('2', '24.881155338755885', '67.17119325702504', '24.887094030441283', '67.14344199686458',ts ))
+    cursor.execute("INSERT INTO driver(Driver_Name,Car_name,Car_num,color,Driver_phone_num,num_of_seats) VALUES(%s,%s,%s,%s,%s,%s)",(Driver_Name,Car_name,Car_num,color,Driver_phone_num,num_of_seats))
+    conn.commit()
+
 def display_ride_details(available_rides,pickup_point_names):
     count=0
     print("Available Routes \n")
@@ -345,32 +352,85 @@ def display_ride_details(available_rides,pickup_point_names):
     # print(pickup_point_names)
 
 
-# Main 
+# # Main 
+
+# # setting up database
+# connection=dbconnect()
+# cursor=connection.cursor()
+
+# # # ROUTES -->
+# # # Fast to Tower : 24.857008405532916, 67.26464745910047 ,24.8515870, 66.996767
+# # # malir cantt to Tower : 24.934510990824176, 67.17714789896337 ,24.8515870, 66.996767
+# # # shah faisal to Tower : 24.866176365450084, 67.1526977487848,24.8515870, 66.996767
+# slat=24.866176365450084
+# slong= 67.1526977487848
+# dlat=24.92493128950155
+# dlong= 67.03039602368902
+
+# response = get_directions_response(slat,slong,dlat,dlong)
+# # route_to_db(response,slat,slong,dlat,dlong)
+# m = create_map(response)
+
+# # Adding User to DB
+# # add_user(24.873003196931517, 67.09391657264112,24.92493128950155, 67.03039602368902)        # PAF
+# # add_user(24.886326091465836, 67.16379554405404,24.92493128950155, 67.03039602368902)        # Star Gate
+# # add_user(24.854539874358366, 67.22828180732928,24.92493128950155, 67.03039602368902)        # Quaidabad
+# # add_user(24.908267870424428, 67.13546172371537,24.92493128950155, 67.03039602368902)        # Habib uni 
+
+# # Call for adding User Marker
+# user_info=read_data_from_db("user")
+# for row in user_info:
+#     r1=np.asarray(row)
+#     add_user_marker_to_map(r1[1],r1[2],r1[0],m)
+#     # print(r1[0])
+
+
+# available_rides=locate_user(24.854539874358366,67.22828180732928,24.924508, 67.030546)     # user at quaidabad
+# # available_rides=locate_user(24.886326091465836, 67.16379554405404,24.924508, 67.030546)    # user at star gate
+# # available_rides=locate_user(24.873003196931517, 67.09391657264112,24.924508, 67.030546)    # user at PAF
+# # available_rides=locate_user(24.908267870424428, 67.13546172371537,24.924508, 67.030546)    # user at Habib uni
+# if(available_rides):
+#     pickup_point_names=put_markers_to_nearest_vehicles(available_rides,m)
+#     display_ride_details(available_rides,pickup_point_names)
+# m.save('./route_map.html')
+# connection.commit()
+
+
+
+
+
+
+
+
+# Main 2.0
 
 # setting up database
 connection=dbconnect()
 cursor=connection.cursor()
 
+# # INSERT DRIVER DETAILS
+# insert_driver_details('Faiz','Mehran','ABC-121','Silver','03112345678',3)
+
 # # ROUTES -->
-# # Fast to Tower : 24.857008405532916, 67.26464745910047 ,24.8515870, 66.996767
-# # malir cantt to Tower : 24.934510990824176, 67.17714789896337 ,24.8515870, 66.996767
-# # shah faisal to Tower : 24.866176365450084, 67.1526977487848,24.8515870, 66.996767
+# # Fast to board office :24.857008405532916, 67.26464745910047, 24.924508, 67.030546 
+# # malir cantt to board office : 24.934510990824176, 67.17714789896337 ,24.924508, 67.030546
+# # shah faisal to board office : 24.866176365450084, 67.1526977487848,24.924508, 67.030546
 slat=24.866176365450084
-slong= 67.1526977487848
-dlat=24.8515877096092
-dlong= 66.99678535095585
+slong=67.1526977487848
+dlat=24.92493128950155
+dlong=67.03039602368902
 
 response = get_directions_response(slat,slong,dlat,dlong)
 # route_to_db(response,slat,slong,dlat,dlong)
 m = create_map(response)
 
 # Adding User to DB
-# add_user(24.873003196931517, 67.09391657264112,24.8515877096092, 66.99678535095585)        # PAF
-# add_user(24.886326091465836, 67.16379554405404,24.8515877096092, 66.99678535095585)        # Star Gate
-# add_user(24.854539874358366, 67.22828180732928,24.8515877096092, 66.99678535095585)        # Quaidabad
-# add_user(24.908267870424428, 67.13546172371537,24.8515877096092, 66.99678535095585)        # Habib uni 
+# add_user(24.873003196931517, 67.09391657264112,24.92493128950155, 67.03039602368902)        # PAF
+# add_user(24.886326091465836, 67.16379554405404,24.92493128950155, 67.03039602368902)        # Star Gate
+# add_user(24.854539874358366, 67.22828180732928,24.92493128950155, 67.03039602368902)        # Quaidabad
+# add_user(24.908267870424428, 67.13546172371537,24.92493128950155, 67.03039602368902)        # Habib uni 
 
-# Call for adding User Marker
+# # Call for adding User Marker
 user_info=read_data_from_db("user")
 for row in user_info:
     r1=np.asarray(row)
@@ -378,10 +438,10 @@ for row in user_info:
     # print(r1[0])
 
 
-available_rides=locate_user(24.854539874358366,67.22828180732928,24.851570, 66.996767)     # user at quaidabad
-# available_rides=locate_user(24.886326091465836, 67.16379554405404,24.851570, 66.996767)    # user at star gate
-# available_rides=locate_user(24.873003196931517, 67.09391657264112,24.851570, 66.996767)    # user at PAF
-# available_rides=locate_user(24.908267870424428, 67.13546172371537,24.851570, 66.996767)    # user at Habib uni
+# available_rides=locate_user(24.854539874358366,67.22828180732928,24.924508, 67.030546)     # user at quaidabad
+# available_rides=locate_user(24.886326091465836, 67.16379554405404,24.924508, 67.030546)    # user at star gate
+available_rides=locate_user(24.873003196931517, 67.09391657264112,24.924508, 67.030546)    # user at PAF
+# # available_rides=locate_user(24.908267870424428, 67.13546172371537,24.924508, 67.030546)    # user at Habib uni
 if(available_rides):
     pickup_point_names=put_markers_to_nearest_vehicles(available_rides,m)
     display_ride_details(available_rides,pickup_point_names)
