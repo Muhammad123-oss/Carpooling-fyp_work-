@@ -3,8 +3,7 @@ from flask import Flask, jsonify, request
 from flask_restful import Resource, Api
 import json
 
-from path_2 import locate_user
-from path_2 import insert_driver_details
+from path_2 import locate_user,insert_driver_details
 
 # creating the flask app
 app = Flask(__name__)
@@ -30,13 +29,20 @@ class find_ride(Resource):
 
 	# Corresponds to POST request
 	def post(self):
+		# data=request.get_json()
+		# insert_driver_details(data['Driver_Name'],data['Car_name'],data['Car_num'],data['color'],data['Driver_phone_num'],int(data['num_of_seats']))
+		return jsonify({'data':'Success'})
+
+class Driver(Resource):
+	def post(self):
 		data=request.get_json()
 		insert_driver_details(data['Driver_Name'],data['Car_name'],data['Car_num'],data['color'],data['Driver_phone_num'],int(data['num_of_seats']))
-		return jsonify({'data':'Success'})
+		return jsonify({'data':'Success_Data_Inserted'})
 
 
 # adding the defined resources along with their corresponding urls
 api.add_resource(find_ride, '/find_ride')
+api.add_resource(Driver, '/Driver')
 
 
 # driver function
