@@ -39,3 +39,26 @@ $.ajax(settings).done(function (response) {
 "Driver_phone_num":"03115467235",
 "num_of_seats":"3"
 }
+
+
+
+//POST REQUEST FOR VERIFY LOGIN
+const settings = {
+  "async": true,
+  "crossDomain": true,
+  "url": "http://127.0.0.1:5000/verify_user",
+  "method": "POST",
+  "headers": {
+    "Content-Type": "application/json; charset=utf-8"
+  },
+  "data": "{\"phone_num\":\"03112345678\"}"
+};
+
+$.ajax(settings).done(function (response) {
+  console.log(response);
+});
+
+//OBJECT TO PASS IN "RAPID API" JSON FIELD
+{
+  "phone_num":"03112345679"
+}
