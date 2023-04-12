@@ -351,6 +351,22 @@ def display_ride_details(available_rides,pickup_point_names):
     # print(available_rides)
     # print(pickup_point_names)
 
+def verify_credentials(user_phone_num):
+    resultant_obj={}
+    conn=dbconnect()
+    # cursor=conn.cursor() TO get index array in return from db
+    cursor = pymysql.cursors.DictCursor(conn) #To get key/value in return from db
+    cursor.execute("SELECT id,Driver_Name FROM `driver` where Driver_phone_num={user_phone_num}".format(user_phone_num=user_phone_num))
+    record=cursor.fetchall()
+    if len(record)==0:
+        resultant_obj['status']=False
+    else:
+        for row in record:
+            resultant_obj['id']=row['id']
+            resultant_obj['name']=row['Driver_Name']
+        resultant_obj['status']=True
+    # print(resultant_obj)
+    return resultant_obj
 
 # # Main 
 
@@ -447,3 +463,8 @@ if(available_rides):
     display_ride_details(available_rides,pickup_point_names)
 m.save('./route_map.html')
 connection.commit()
+
+
+# CALLER FOR LOGIN CREDENTIALS VERIFICATION
+# print("TESTING FOR VERIFY FUNCTION\n")
+# result=verify_credentials("03110987650")

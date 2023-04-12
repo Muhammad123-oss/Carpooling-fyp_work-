@@ -1,0 +1,41 @@
+//GET REQUEST
+const settings = {
+  "async": true,
+  "crossDomain": true,
+  "url": "http://127.0.0.1:5000/find_ride?slat=24.873003196931517&slong=67.09391657264112&dlat=24.924508&dlong=67.030546",
+  "method": "GET",
+  "headers": {}
+};
+
+$.ajax(settings).done(function (response) {
+  console.log(response);
+});
+
+
+//POST REQUEST
+const settings = {
+  "async": true,
+  "crossDomain": true,
+  "url": "http://127.0.0.1:5000/",
+  "method": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "processData": false,
+  "data": "{\"id\":\"1\",\"Driver_Name\":\"Faiz\",\"Car_name\":\"Mehran\",\"Car_num\":\"ABC-121\",\"color\":\"Silver\",\"Driver_phone_num\":\"03112345678\",\"num_of_seats\":\"3\"}"
+};
+
+$.ajax(settings).done(function (response) {
+  console.log(response);
+});
+
+
+//OBJECT FOR POST
+{
+"Driver_Name":"Sameer",
+"Car_name":"Alto",
+"Car_num":"GHI-678",
+"color":"White",
+"Driver_phone_num":"03115467235",
+"num_of_seats":"3"
+}
