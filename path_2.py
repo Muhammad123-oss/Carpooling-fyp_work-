@@ -113,7 +113,8 @@ def read_data_from_db(table):
 def get_same_route(des_lat,des_long):
     conn=dbconnect()
     # {des_lat:.6f}
-    cursor=conn.cursor()
+    # cursor=conn.cursor() TO get rows in index array in return from db
+    cursor = pymysql.cursors.DictCursor(conn) #To get rows in key/value array in return from db
     # print(start_location)
     destination_location=str(des_lat)+", "+str(des_long)
     # SELECT * FROM `routes` where (((24.9085*10000) - CONVERT((slat*10000),INT)) <> 0);
@@ -147,15 +148,17 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
     # print(dest_data)
     cmp_route_arr=[]
     fare_type_selection=[]
+    driver_id=[]
     if(dest_data):
         for row in dest_data:
             # print(json.loads(row))
-            r1=np.asarray(row)
+            # r1=np.asarray(row)
             #Converting json(string) column from DB to Python list
-            cmp_route=json.loads(r1[7])         
-            # print(r1[1])
-            fare_type_selection.append(r1[6])
-            # print(r1[6])
+            cmp_route=json.loads(row['croute'])         
+            # print(row['name'])
+            fare_type_selection.append(row['fare_type'])
+            driver_id.append(row['driver_id'])
+            # print(row['fare_type'])
             # print(len(cmp_route))
             # print(cmp_route) 
             cmp_route_arr.append(cmp_route) 
@@ -175,6 +178,7 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
         for route in range(num_rows):
             route_len=len(cmp_route_arr[route])
             driver_choice=fare_type_selection[route]
+            driver_identity=driver_id[route]
             nearest_path_available=False
             min =999
             pickup_point_lat=0.0
@@ -198,11 +202,21 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
             if(nearest_path_available):
                 name=' Route '+str(count) #Setting a name for nested dictionary  
                 nearest_dest[name]={} #Initializing a dictionary that to be nested in a 'nearest_dest{}'
-                nearest_dest[name]['min']=format(min, '.2f')
+                nearest_dest[name]['distance_to_car']=format(min, '.2f')
                 nearest_dest[name]['lat']=pickup_point_lat
                 nearest_dest[name]['long']=pickup_point_long
                 result=get_distance_time(pickup_point_lat,pickup_point_long,user_dest_lat,user_dest_long)
                 nearest_dest[name]['ride_fare']=calculate_fare_for_user(result,driver_choice)
+                driver_details=get_driver_details(driver_identity)
+                if(driver_details['status']):
+                    nearest_dest[name]['driver_name']=driver_details['name']
+                    nearest_dest[name]['Car_name']=driver_details['Car_name']
+                    nearest_dest[name]['Car_num']=driver_details['Car_num']
+                    nearest_dest[name]['color']=driver_details['color']
+                    nearest_dest[name]['Driver_phone_num']=driver_details['Driver_phone_num']
+                    nearest_dest[name]['num_of_seats']=driver_details['num_of_seats']
+                else:
+                    nearest_dest[name]['driver_details']='Not Found'
                 count=count+1
         #'for loop' body ends here
         # print("Nearest KEY Riders Array")
@@ -342,7 +356,7 @@ def display_ride_details(available_rides,pickup_point_names):
     print("Available Routes \n")
     for i in available_rides:
         print(i)
-        print(" Minimum Distance :",available_rides[i]['min'])
+        print(" Minimum Distance :",available_rides[i]['distance_to_car'])
         print(" Ride Fare        :",available_rides[i]['ride_fare'])
         print(" Pick Up Point    :",pickup_point_names[count])
         print('\n')
@@ -354,8 +368,8 @@ def display_ride_details(available_rides,pickup_point_names):
 def verify_credentials(user_phone_num):
     resultant_obj={}
     conn=dbconnect()
-    # cursor=conn.cursor() TO get index array in return from db
-    cursor = pymysql.cursors.DictCursor(conn) #To get key/value in return from db
+    # cursor=conn.cursor() TO get rows in index array in return from db
+    cursor = pymysql.cursors.DictCursor(conn) #To get rows in key/value array in return from db
     cursor.execute("SELECT id,Driver_Name FROM `driver` where Driver_phone_num={user_phone_num}".format(user_phone_num=user_phone_num))
     record=cursor.fetchall()
     if len(record)==0:
@@ -367,6 +381,26 @@ def verify_credentials(user_phone_num):
         resultant_obj['status']=True
     # print(resultant_obj)
     return resultant_obj
+
+def get_driver_details(id):
+    driver_details={}
+    conn=dbconnect()
+    # cursor=conn.cursor() TO get rows in index array in return from db
+    cursor = pymysql.cursors.DictCursor(conn) #To get rows in key/value array in return from db
+    cursor.execute("SELECT * FROM `driver` where id={id}".format(id=id))
+    record=cursor.fetchall()
+    if len(record)==0:
+        driver_details['status']=False
+    else:
+        for row in record:
+            driver_details['name']=row['Driver_Name']
+            driver_details['Car_name']=row['Car_name']
+            driver_details['Car_num']=row['Car_num']
+            driver_details['color']=row['color']
+            driver_details['Driver_phone_num']=row['Driver_phone_num']
+            driver_details['num_of_seats']=row['num_of_seats']
+        driver_details['status']=True
+    return driver_details  
 
 # # Main 
 
@@ -458,6 +492,7 @@ for row in user_info:
 # available_rides=locate_user(24.886326091465836, 67.16379554405404,24.924508, 67.030546)    # user at star gate
 available_rides=locate_user(24.873003196931517, 67.09391657264112,24.924508, 67.030546)    # user at PAF
 # # available_rides=locate_user(24.908267870424428, 67.13546172371537,24.924508, 67.030546)    # user at Habib uni
+# print(available_rides)
 if(available_rides):
     pickup_point_names=put_markers_to_nearest_vehicles(available_rides,m)
     display_ride_details(available_rides,pickup_point_names)

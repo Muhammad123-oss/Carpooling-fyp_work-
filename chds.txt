@@ -4,7 +4,9 @@ const settings = {
   "crossDomain": true,
   "url": "http://127.0.0.1:5000/find_ride?slat=24.873003196931517&slong=67.09391657264112&dlat=24.924508&dlong=67.030546",
   "method": "GET",
-  "headers": {}
+  "headers": {
+    "Content-Type": "application/json"
+  }
 };
 
 $.ajax(settings).done(function (response) {
