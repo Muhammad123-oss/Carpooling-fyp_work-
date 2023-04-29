@@ -64,3 +64,19 @@ $.ajax(settings).done(function (response) {
 {
   "phone_num":"03112345679"
 }
+
+
+//POST REQUEST TO UPDATE SEATS Available
+const settings = {
+  "async": true,
+  "crossDomain": true,
+  "url": "http://127.0.0.1:5000/find_ride",
+  "method": "POST",
+  "headers": {},
+  "processData": false,
+  "data": "{\"num_of_seats_booked\":\"2\",\"route_id\":\"4\"}"
+};
+
+$.ajax(settings).done(function (response) {
+  console.log(response);
+});

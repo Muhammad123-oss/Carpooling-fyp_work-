@@ -149,6 +149,7 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long,require_
     cmp_route_arr=[]
     fare_type_selection=[]
     driver_id=[]
+    route_id=[]
     if(dest_data):
         for row in dest_data:
             # print(json.loads(row))
@@ -158,6 +159,7 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long,require_
             # print(row['name'])
             fare_type_selection.append(row['fare_type'])
             driver_id.append(row['driver_id'])
+            route_id.append(row['sno'])
             # print(row['fare_type'])
             # print(len(cmp_route))
             # print(cmp_route) 
@@ -179,6 +181,7 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long,require_
             route_len=len(cmp_route_arr[route])
             driver_choice=fare_type_selection[route]
             driver_identity=driver_id[route]
+            route_identifier=route_id[route]
             nearest_path_available=False
             min =999
             pickup_point_lat=0.0
@@ -202,6 +205,7 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long,require_
             if(nearest_path_available):
                 name=' Route '+str(count) #Setting a name for nested dictionary  
                 nearest_dest[name]={} #Initializing a dictionary that to be nested in a 'nearest_dest{}'
+                nearest_dest[name]['route_id']=route_identifier
                 nearest_dest[name]['distance_to_car']=format(min, '.2f')
                 nearest_dest[name]['lat']=pickup_point_lat
                 nearest_dest[name]['long']=pickup_point_long
@@ -400,6 +404,18 @@ def get_driver_details(id):
         driver_details['status']=True
     return driver_details  
 
+def update_seats(seats_booked,route_id):
+    conn=dbconnect()
+    cursor=conn.cursor()
+    cursor.execute("UPDATE `routes` SET `available_seats`=`available_seats` - {seats_booked} WHERE `routes`.`sno`={id}".format(seats_booked=seats_booked,id=route_id))
+    conn.commit()
+    rows_effected=cursor.rowcount
+    if(rows_effected==1):
+        return "Updated_Successfully"
+    else:
+        return "Operation Failed"
+
+
 # # Main 
 
 # # setting up database
@@ -500,5 +516,6 @@ m = create_map(response)
 # CALLER FOR LOGIN CREDENTIALS VERIFICATION
 # print("TESTING FOR VERIFY FUNCTION\n")
 # result=verify_credentials("03110987650")
-
+# result=update_seats(2,6)
+# print(result)
 connection.commit()

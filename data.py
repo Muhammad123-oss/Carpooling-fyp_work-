@@ -3,7 +3,7 @@ from flask import Flask, jsonify, request
 from flask_restful import Resource, Api
 import json
 
-from path_2 import locate_user,insert_driver_details,verify_credentials
+from path_2 import locate_user,insert_driver_details,verify_credentials,update_seats
 
 # creating the flask app
 app = Flask(__name__)
@@ -29,9 +29,9 @@ class find_ride(Resource):
 
 	# Corresponds to POST request
 	def post(self):
-		# data=request.get_json()
-		# insert_driver_details(data['Driver_Name'],data['Car_name'],data['Car_num'],data['color'],data['Driver_phone_num'],int(data['num_of_seats']))
-		return jsonify({'data':'Success'})
+		data=request.get_json()
+		response=update_seats(int(data['num_of_seats_booked']),int(data['route_id']))
+		return jsonify({'data':response})
 
 class Driver(Resource):
 	def post(self):
