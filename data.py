@@ -23,7 +23,7 @@ class find_ride(Resource):
 		# {\"slat\":\"24.873003196931517\",\"slong\":\"67.09391657264112\",\"dlat\":\"24.924508\",\"dlong\":\"67.030546\"}
 		# data=request.json
 		data=request.args.to_dict()
-		available_rides=locate_user(float(data['slat']),float(data['slong']),float(data['dlat']),float(data['dlong']))
+		available_rides=locate_user(float(data['slat']),float(data['slong']),float(data['dlat']),float(data['dlong']),int(data['require_seats']))
 		# print(float(data['slat']))
 		return jsonify({'data': available_rides})
 

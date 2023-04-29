@@ -2,7 +2,7 @@
 const settings = {
   "async": true,
   "crossDomain": true,
-  "url": "http://127.0.0.1:5000/find_ride?slat=24.873003196931517&slong=67.09391657264112&dlat=24.924508&dlong=67.030546",
+  "url": "http://127.0.0.1:5000/find_ride?slat=24.873003196931517&slong=67.09391657264112&dlat=24.924508&dlong=67.030546&require_seats=1",
   "method": "GET",
   "headers": {
     "Content-Type": "application/json"

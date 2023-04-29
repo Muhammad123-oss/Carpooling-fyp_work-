@@ -110,7 +110,7 @@ def read_data_from_db(table):
     record=cursor.fetchall()
     return record
 
-def get_same_route(des_lat,des_long):
+def get_same_route(des_lat,des_long,require_seats):
     conn=dbconnect()
     # {des_lat:.6f}
     # cursor=conn.cursor() TO get rows in index array in return from db
@@ -121,7 +121,7 @@ def get_same_route(des_lat,des_long):
     # cursor.execute("SELECT * FROM `routes` where ((({des_lat:.6f}*1000000) - CONVERT((dlat*1000000),INT)) = 0)  AND \
     #     ((({des_long:.6f}*1000000) - CONVERT((dlong*1000000),INT)) = 0)"\
     #     .format(des_long=des_long,des_lat=des_lat))
-    cursor.execute("SELECT * FROM `routes` where croute LIKE '%{s}%'".format(s=destination_location))
+    cursor.execute("SELECT * FROM `routes` where croute LIKE '%{s}%' AND available_seats>={seats}".format(s=destination_location,seats=require_seats))
     return cursor.fetchall()
 
 def calculate_fare_for_user(result,user_choice):
@@ -142,9 +142,9 @@ def calculate_fare_for_user(result,user_choice):
         case _:
             print("Invalid")
 
-def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
+def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long,require_seats):
     # Checking for similar destination routes (dest long lat ,source long lat)
-    dest_data=get_same_route(user_dest_lat,user_dest_long)
+    dest_data=get_same_route(user_dest_lat,user_dest_long,require_seats)
     # print(dest_data)
     cmp_route_arr=[]
     fare_type_selection=[]
@@ -214,7 +214,6 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
                     nearest_dest[name]['Car_num']=driver_details['Car_num']
                     nearest_dest[name]['color']=driver_details['color']
                     nearest_dest[name]['Driver_phone_num']=driver_details['Driver_phone_num']
-                    nearest_dest[name]['num_of_seats']=driver_details['num_of_seats']
                 else:
                     nearest_dest[name]['driver_details']='Not Found'
                 count=count+1
@@ -398,7 +397,6 @@ def get_driver_details(id):
             driver_details['Car_num']=row['Car_num']
             driver_details['color']=row['color']
             driver_details['Driver_phone_num']=row['Driver_phone_num']
-            driver_details['num_of_seats']=row['num_of_seats']
         driver_details['status']=True
     return driver_details  
 
@@ -481,25 +479,26 @@ m = create_map(response)
 # add_user(24.908267870424428, 67.13546172371537,24.92493128950155, 67.03039602368902)        # Habib uni 
 
 # # Call for adding User Marker
-user_info=read_data_from_db("user")
-for row in user_info:
-    r1=np.asarray(row)
-    add_user_marker_to_map(r1[1],r1[2],r1[0],m)
+# user_info=read_data_from_db("user")
+# for row in user_info:
+#     r1=np.asarray(row)
+#     add_user_marker_to_map(r1[1],r1[2],r1[0],m)
     # print(r1[0])
 
 
 # available_rides=locate_user(24.854539874358366,67.22828180732928,24.924508, 67.030546)     # user at quaidabad
 # available_rides=locate_user(24.886326091465836, 67.16379554405404,24.924508, 67.030546)    # user at star gate
-available_rides=locate_user(24.873003196931517, 67.09391657264112,24.924508, 67.030546)    # user at PAF
+# available_rides=locate_user(24.873003196931517, 67.09391657264112,24.924508, 67.030546,1)    # user at PAF
 # # available_rides=locate_user(24.908267870424428, 67.13546172371537,24.924508, 67.030546)    # user at Habib uni
 # print(available_rides)
-if(available_rides):
-    pickup_point_names=put_markers_to_nearest_vehicles(available_rides,m)
-    display_ride_details(available_rides,pickup_point_names)
-m.save('./route_map.html')
-connection.commit()
+# if(available_rides):
+#     pickup_point_names=put_markers_to_nearest_vehicles(available_rides,m)
+#     display_ride_details(available_rides,pickup_point_names)
+# m.save('./route_map.html')
 
 
 # CALLER FOR LOGIN CREDENTIALS VERIFICATION
 # print("TESTING FOR VERIFY FUNCTION\n")
 # result=verify_credentials("03110987650")
+
+connection.commit()
