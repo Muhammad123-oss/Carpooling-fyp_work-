@@ -80,3 +80,19 @@ const settings = {
 $.ajax(settings).done(function (response) {
   console.log(response);
 });
+
+
+//POST REQUEST TO POST ROUTE TO DB
+const settings = {
+  "async": true,
+  "crossDomain": true,
+  "url": "http://127.0.0.1:5000/add_route",
+  "method": "POST",
+  "headers": {},
+  "processData": false,
+  "data": "{\"route_name\":\"XYZ\",\"slat\":\"24.880372376369387\",\"slong\":\"67.19579497740406\",\"dlat\":\"24.882685472728678\",\"dlong\":\"67.06821370228083\",\"driver_id\":\"7\",\"available_seats\":\"4\",\"fare_type\":\"system\"}"
+};
+
+$.ajax(settings).done(function (response) {
+  console.log(response);
+});

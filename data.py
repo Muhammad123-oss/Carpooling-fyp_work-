@@ -3,7 +3,7 @@ from flask import Flask, jsonify, request
 from flask_restful import Resource, Api
 import json
 
-from path_2 import locate_user,insert_driver_details,verify_credentials,update_seats
+from path_2 import locate_user,insert_driver_details,verify_credentials,update_seats,get_directions_response,route_to_db
 
 # creating the flask app
 app = Flask(__name__)
@@ -45,10 +45,18 @@ class verify_login(Resource):
 		result=verify_credentials(str(data['phone_num']))
 		return jsonify({'data':result})
 
+class offer_pool(Resource):
+	def post(self):
+		data=request.get_json()
+		complete_route=get_directions_response(float(data['slat']),float(data['slong']),float(data['dlat']),float(data['dlong']))
+		response=route_to_db(complete_route,str(data['route_name']),float(data['slat']),float(data['slong']),float(data['dlat']),float(data['dlong']),int(data['driver_id']),int(data['available_seats']),str(data['fare_type']))
+		return jsonify({'data':'Route Inserted'})
+
 # adding the defined resources along with their corresponding urls
 api.add_resource(find_ride, '/find_ride')
 api.add_resource(Driver, '/Driver')
 api.add_resource(verify_login, '/verify_user')
+api.add_resource(offer_pool, '/add_route')
 
 
 # driver function

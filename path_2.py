@@ -47,10 +47,9 @@ def select_fare_type():
             select_fare_type()
 
 # Add Routes to DB
-def route_to_db(response,slat,slong,dlat,dlong):
-    route_name=input("Enter route Name: ")
-    fare_type=select_fare_type()
-    print(fare_type)
+def route_to_db(response,route_name,slat,slong,dlat,dlong,driver_id,available_seats,fare_type):
+    # fare_type=select_fare_type()
+    # print(fare_type)
     routeArray =[]
     coo=[]
     total_cood=len(response.json()['features'][0]['geometry']['coordinates'][0])
@@ -67,7 +66,7 @@ def route_to_db(response,slat,slong,dlat,dlong):
     routeee=json.dumps(coo)
     # print(routeee)
 
-    cursor.execute("INSERT INTO routes(name,slat,slong,dlat,dlong,fare_type,croute) VALUES(%s,%s,%s,%s,%s,%s,%s)",(route_name,slat,slong,dlat,dlong,fare_type,routeee))
+    cursor.execute("INSERT INTO routes(name,driver_id,available_seats,slat,slong,dlat,dlong,fare_type,croute) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)",(route_name,driver_id,available_seats,slat,slong,dlat,dlong,fare_type,routeee))
     connection.commit()
 
 def create_map(response):
