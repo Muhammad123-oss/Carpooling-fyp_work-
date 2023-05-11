@@ -13,7 +13,7 @@ import datetime
 
 def dbconnect():
     # database connection
-    connection = pymysql.connect(host="localhost", user="root", passwd="", database="carpooling")
+    connection = pymysql.connect(host="127.0.0.1",port=3307, user="root", passwd="", database="carpooling")
     # cursor = connection.cursor()
     # some other statements  with the help of cursor
     return connection
@@ -216,7 +216,7 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long,require_
                     nearest_dest[name]['Car_name']=driver_details['Car_name']
                     nearest_dest[name]['Car_num']=driver_details['Car_num']
                     nearest_dest[name]['color']=driver_details['color']
-                    nearest_dest[name]['Driver_phone_num']=driver_details['Driver_phone_num']
+                    nearest_dest[name]['Driver_phone_num']=driver_details['phone_num']
                 else:
                     nearest_dest[name]['driver_details']='Not Found'
                 count=count+1
@@ -350,7 +350,14 @@ def insert_driver_details(Driver_Name,Car_name,Car_num,color,Driver_phone_num,nu
     conn=dbconnect()
     cursor=conn.cursor()
     # cursor.execute("INSERT INTO `user` (`u_id`, `u_source_lat`, `u_source_long`, `u_dest_lat`, `u_dest_long`, `time`) VALUES ",('2', '24.881155338755885', '67.17119325702504', '24.887094030441283', '67.14344199686458',ts ))
-    cursor.execute("INSERT INTO driver(Driver_Name,Car_name,Car_num,color,Driver_phone_num,num_of_seats) VALUES(%s,%s,%s,%s,%s,%s)",(Driver_Name,Car_name,Car_num,color,Driver_phone_num,num_of_seats))
+    cursor.execute("INSERT INTO driver(name,Car_name,Car_num,color,phone_num,num_of_seats) VALUES(%s,%s,%s,%s,%s,%s)",(Driver_Name,Car_name,Car_num,color,Driver_phone_num,num_of_seats))
+    conn.commit()
+
+def insert_passenger_details(Passenger_name,CNIC,Phone_Num):
+    conn=dbconnect()
+    cursor=conn.cursor()
+    # INSERT INTO `passenger` (`name`, `cnic`, `phone_num`) VALUES ('1', 'Ahsan Khalid', '4251212121212121', '03123456987');
+    cursor.execute("INSERT INTO passenger(name,cnic,phone_num) VALUES(%s,%s,%s)",(Passenger_name,CNIC,Phone_Num))
     conn.commit()
 
 def display_ride_details(available_rides,pickup_point_names):
@@ -367,19 +374,20 @@ def display_ride_details(available_rides,pickup_point_names):
     # print(available_rides)
     # print(pickup_point_names)
 
-def verify_credentials(user_phone_num):
+def verify_credentials(user_phone_num,user_type):
     resultant_obj={}
     conn=dbconnect()
+    user_type=user_type.lower()
     # cursor=conn.cursor() TO get rows in index array in return from db
     cursor = pymysql.cursors.DictCursor(conn) #To get rows in key/value array in return from db
-    cursor.execute("SELECT id,Driver_Name FROM `driver` where Driver_phone_num={user_phone_num}".format(user_phone_num=user_phone_num))
+    cursor.execute("SELECT id,name FROM {user_type} where phone_num={user_phone_num}".format(user_phone_num=user_phone_num,user_type=user_type))
     record=cursor.fetchall()
     if len(record)==0:
         resultant_obj['status']=False
     else:
         for row in record:
             resultant_obj['id']=row['id']
-            resultant_obj['name']=row['Driver_Name']
+            resultant_obj['name']=row['name']
         resultant_obj['status']=True
     # print(resultant_obj)
     return resultant_obj
@@ -395,11 +403,11 @@ def get_driver_details(id):
         driver_details['status']=False
     else:
         for row in record:
-            driver_details['name']=row['Driver_Name']
+            driver_details['name']=row['name']
             driver_details['Car_name']=row['Car_name']
             driver_details['Car_num']=row['Car_num']
             driver_details['color']=row['color']
-            driver_details['Driver_phone_num']=row['Driver_phone_num']
+            driver_details['Driver_phone_num']=row['phone_num']
         driver_details['status']=True
     return driver_details  
 
@@ -472,7 +480,7 @@ connection=dbconnect()
 cursor=connection.cursor()
 
 # # INSERT DRIVER DETAILS
-# insert_driver_details('Faiz','Mehran','ABC-121','Silver','03112345678',3)
+# insert_driver_details('Ali Asghar','Vitz','PQR-333','White','03112213442',4)
 
 # # ROUTES -->
 # # Fast to board office :24.857008405532916, 67.26464745910047, 24.924508, 67.030546 
@@ -514,7 +522,9 @@ m = create_map(response)
 
 # CALLER FOR LOGIN CREDENTIALS VERIFICATION
 # print("TESTING FOR VERIFY FUNCTION\n")
-# result=verify_credentials("03110987650")
+# result=verify_credentials("03115467235","Driver")
+# result=insert_passenger_details("Hamza Khalid","4256789987898","0312121234874")
+# print(result)
 # result=update_seats(2,6)
 # print(result)
 connection.commit()

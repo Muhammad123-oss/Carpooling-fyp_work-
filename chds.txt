@@ -18,19 +18,20 @@ $.ajax(settings).done(function (response) {
 const settings = {
   "async": true,
   "crossDomain": true,
-  "url": "http://127.0.0.1:5000/",
+  "url": "http://127.0.0.1:5000/insert_driver",
   "method": "POST",
-  "headers": {
-    "Content-Type": "application/json"
-  },
+  "headers": {},
   "processData": false,
-  "data": "{\"id\":\"1\",\"Driver_Name\":\"Faiz\",\"Car_name\":\"Mehran\",\"Car_num\":\"ABC-121\",\"color\":\"Silver\",\"Driver_phone_num\":\"03112345678\",\"num_of_seats\":\"3\"}"
+  "data": "{\"Driver_Name\":\"Alian\",\"Car_name\":\"Corolla\",\"Car_num\":\"LLL-787\",\"color\":\"White\",\"Driver_phone_num\":\"03110320430\",\"num_of_seats\":\"6\"}"
 };
 
 $.ajax(settings).done(function (response) {
   console.log(response);
 });
 
+$.ajax(settings).done(function (response) {
+  console.log(response);
+});
 
 //OBJECT FOR POST
 {
@@ -42,7 +43,27 @@ $.ajax(settings).done(function (response) {
 "num_of_seats":"3"
 }
 
+//INSERT PASSENGER TO DB
+const settings = {
+  "async": true,
+  "crossDomain": true,
+  "url": "http://127.0.0.1:5000/insert_passenger",
+  "method": "POST",
+  "headers": {},
+  "processData": false,
+  "data": "{\"passenger_name\":\"Wasif\",\"cnic\":\"4251909435675\",\"phone_num\":\"03339495392\"}"
+};
 
+$.ajax(settings).done(function (response) {
+  console.log(response);
+});
+
+//POST OBJECT
+{
+  "passenger_name":"Wasif",
+  "cnic":"4251909435675",
+  "phone_num":"03339495392"
+}
 
 //POST REQUEST FOR VERIFY LOGIN
 const settings = {
@@ -53,7 +74,7 @@ const settings = {
   "headers": {
     "Content-Type": "application/json; charset=utf-8"
   },
-  "data": "{\"phone_num\":\"03112345678\"}"
+  "data": "{\"phone_num\":\"03123456987\",\"user_type\":\"passenger\"}"
 };
 
 $.ajax(settings).done(function (response) {
@@ -62,7 +83,8 @@ $.ajax(settings).done(function (response) {
 
 //OBJECT TO PASS IN "RAPID API" JSON FIELD
 {
-  "phone_num":"03112345679"
+  "phone_num":"03123456987",
+  "user_type":"passenger"
 }
 
 

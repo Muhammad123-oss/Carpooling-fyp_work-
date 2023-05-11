@@ -2,8 +2,8 @@
 -- version 5.2.0
 -- https://www.phpmyadmin.net/
 --
--- Host: 127.0.0.1
--- Generation Time: Apr 29, 2023 at 08:33 AM
+-- Host: localhost:3307
+-- Generation Time: May 11, 2023 at 09:01 AM
 -- Server version: 10.4.24-MariaDB
 -- PHP Version: 8.1.6
 
@@ -29,11 +29,11 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `driver` (
   `id` int(10) NOT NULL,
-  `Driver_Name` varchar(100) NOT NULL,
+  `name` varchar(100) NOT NULL,
   `Car_name` varchar(100) NOT NULL,
   `Car_num` varchar(20) NOT NULL,
   `color` varchar(20) NOT NULL,
-  `Driver_phone_num` varchar(11) NOT NULL,
+  `phone_num` varchar(11) NOT NULL,
   `num_of_seats` int(5) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -41,12 +41,14 @@ CREATE TABLE `driver` (
 -- Dumping data for table `driver`
 --
 
-INSERT INTO `driver` (`id`, `Driver_Name`, `Car_name`, `Car_num`, `color`, `Driver_phone_num`, `num_of_seats`) VALUES
+INSERT INTO `driver` (`id`, `name`, `Car_name`, `Car_num`, `color`, `phone_num`, `num_of_seats`) VALUES
 (1, 'Faiz', 'Mehran', 'ABC-121', 'Silver', '03112345678', 3),
 (2, 'Umer', 'Cultus', 'DEF-345', 'White', '03110987654', 3),
 (6, 'Sameer', 'Alto', 'GHI-678', 'White', '03115467235', 3),
 (7, 'Shamo', 'civic', 'UIO-456', 'Grey', '03110908778', 5),
-(8, 'Haroon', 'mira', 'KIL-461', 'Silver', '03110998778', 4);
+(8, 'Haroon', 'mira', 'KIL-461', 'Silver', '03110998778', 4),
+(9, 'Ali Asghar', 'Vitz', 'PQR-333', 'White', '03112213442', 4),
+(10, 'Alian', 'Corolla', 'LLL-787', 'White', '03110320430', 6);
 
 -- --------------------------------------------------------
 
@@ -93,6 +95,28 @@ INSERT INTO `old_routes` (`sno`, `name`, `s_location_point`, `d_location_point`)
 (4, 'point_1', 0xe610000001010000000ad7a3703d0ab73f0ad7a3703d0ac73f, 0xe610000001010000000ad7a3703d0ac73f0ad7a3703d0ad73f),
 (5, 'point_2', 0xe610000001010000000ad7a3703d0ac73f0ad7a3703d0ad73f, 0xe6100000010100000048e17a14ae47d13f48e17a14ae47e13f),
 (6, 'point_3', 0xe6100000010100000048e17a14ae47d13f48e17a14ae47e13f, 0xe610000001010000000ad7a3703d0ab73f0ad7a3703d0ac73f);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `passenger`
+--
+
+CREATE TABLE `passenger` (
+  `id` int(7) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `cnic` varchar(13) NOT NULL,
+  `phone_num` varchar(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Dumping data for table `passenger`
+--
+
+INSERT INTO `passenger` (`id`, `name`, `cnic`, `phone_num`) VALUES
+(1, 'Ahsan Khalid', '4251212121212', '03123456987'),
+(2, 'Hamza Khalid', '4256789987898', '03121212348'),
+(3, 'Wasif', '4251909435675', '03339495392');
 
 -- --------------------------------------------------------
 
@@ -186,6 +210,12 @@ ALTER TABLE `old_routes`
   ADD SPATIAL KEY `d_location_point` (`d_location_point`);
 
 --
+-- Indexes for table `passenger`
+--
+ALTER TABLE `passenger`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `routes`
 --
 ALTER TABLE `routes`
@@ -206,7 +236,7 @@ ALTER TABLE `user`
 -- AUTO_INCREMENT for table `driver`
 --
 ALTER TABLE `driver`
-  MODIFY `id` int(10) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(10) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `locations_earth`
@@ -219,6 +249,12 @@ ALTER TABLE `locations_earth`
 --
 ALTER TABLE `old_routes`
   MODIFY `sno` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `passenger`
+--
+ALTER TABLE `passenger`
+  MODIFY `id` int(7) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `routes`
