@@ -63,6 +63,9 @@ def route_to_db(response,route_name,slat,slong,dlat,dlong,driver_id,available_se
     # setting up database
     connection=dbconnect()
     cursor=connection.cursor()
+    dlat=float(format(dlat, '.6f'))
+    dlong=float(format(dlong, '.6f'))
+    coo.append([dlat,dlong])
     routeee=json.dumps(coo)
     # print(routeee)
 
