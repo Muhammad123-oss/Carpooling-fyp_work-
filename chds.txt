@@ -18,16 +18,12 @@ $.ajax(settings).done(function (response) {
 const settings = {
   "async": true,
   "crossDomain": true,
-  "url": "http://127.0.0.1:5000/insert_driver",
+  "url": "http://127.0.0.1:5000/driver",
   "method": "POST",
   "headers": {},
   "processData": false,
   "data": "{\"Driver_Name\":\"Alian\",\"Car_name\":\"Corolla\",\"Car_num\":\"LLL-787\",\"color\":\"White\",\"Driver_phone_num\":\"03110320430\",\"num_of_seats\":\"6\"}"
 };
-
-$.ajax(settings).done(function (response) {
-  console.log(response);
-});
 
 $.ajax(settings).done(function (response) {
   console.log(response);
@@ -113,6 +109,32 @@ const settings = {
   "headers": {},
   "processData": false,
   "data": "{\"route_name\":\"XYZ\",\"slat\":\"24.880372376369387\",\"slong\":\"67.19579497740406\",\"dlat\":\"24.882685472728678\",\"dlong\":\"67.06821370228083\",\"driver_id\":\"7\",\"available_seats\":\"4\",\"fare_type\":\"system\"}"
+};
+
+$.ajax(settings).done(function (response) {
+  console.log(response);
+});
+
+//Object For request
+{
+  "route_name":"PYT",
+  "slat":"24.879723008004902",
+  "slong":"67.17117742344097",
+  "dlat":"24.91330251759388",
+  "dlong":"67.20065749765101",
+  "driver_id":"9",
+  "available_seats":"4",
+  "fare_type":"system"
+}
+
+
+//GET DRIVER HISTORY
+const settings = {
+  "async": true,
+  "crossDomain": true,
+  "url": "http://127.0.0.1:5000/driver?driver_id=9",
+  "method": "GET",
+  "headers": {}
 };
 
 $.ajax(settings).done(function (response) {

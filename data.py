@@ -3,7 +3,7 @@ from flask import Flask, jsonify, request
 from flask_restful import Resource, Api
 import json
 
-from path_2 import locate_user,insert_driver_details,verify_credentials,update_seats,get_directions_response,route_to_db,insert_passenger_details
+from path_2 import locate_user,insert_driver_details,verify_credentials,update_seats,get_directions_response,route_to_db,insert_passenger_details,get_driver_history
 
 # creating the flask app
 app = Flask(__name__)
@@ -38,6 +38,11 @@ class Driver(Resource):
 		data=request.get_json()
 		insert_driver_details(data['Driver_Name'],data['Car_name'],data['Car_num'],data['color'],data['Driver_phone_num'],int(data['num_of_seats']))
 		return jsonify({'data':'Success_Data_Inserted'})
+	
+	def get(self):
+		data=request.args.to_dict()
+		response=get_driver_history(data['driver_id'])
+		return jsonify({'data':response})
 
 class Passenger(Resource):
 	def post(self):
@@ -60,7 +65,7 @@ class offer_pool(Resource):
 
 # adding the defined resources along with their corresponding urls
 api.add_resource(find_ride, '/find_ride')
-api.add_resource(Driver, '/insert_driver')
+api.add_resource(Driver, '/driver')
 api.add_resource(Passenger, '/insert_passenger')
 api.add_resource(verify_login, '/verify_user')
 api.add_resource(offer_pool, '/add_route')

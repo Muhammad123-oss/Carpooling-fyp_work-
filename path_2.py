@@ -65,7 +65,7 @@ def route_to_db(response,route_name,slat,slong,dlat,dlong,driver_id,available_se
     cursor=connection.cursor()
     dlat=float(format(dlat, '.6f'))
     dlong=float(format(dlong, '.6f'))
-    coo.append([dlat,dlong])
+    coo.append([dlat,dlong]) #We are appending dlat,dlong to our complete route as API not taking our last points.
     routeee=json.dumps(coo)
     # print(routeee)
 
@@ -413,6 +413,30 @@ def get_driver_details(id):
             driver_details['Driver_phone_num']=row['phone_num']
         driver_details['status']=True
     return driver_details  
+
+def get_driver_history(id):
+    driver_history={}
+    index=1
+    conn=dbconnect()
+    # cursor=conn.cursor() TO get rows in index array in return from db
+    cursor = pymysql.cursors.DictCursor(conn) #To get rows in key/value array in return from db
+    cursor.execute("SELECT * FROM `driver_history` where Driver_id={id}".format(id=id))
+    record=cursor.fetchall()
+    if len(record)==0:
+        driver_history['status']=False
+    else:
+        driver_history['Driver_Record']={}
+        for row in record:
+            driver_record={}
+            driver_record['Route_id']=row['Route_id']
+            driver_record['Driver_id']=row['Driver_id']
+            driver_record['slat']=row['slat']
+            driver_record['slong']=row['slong']
+            driver_record['dlat']=row['dlat']
+            driver_record['dlong']=row['dlong']
+            driver_history[str(index)]=driver_record
+            index=index+1
+    return driver_history
 
 def update_seats(seats_booked,route_id):
     conn=dbconnect()
