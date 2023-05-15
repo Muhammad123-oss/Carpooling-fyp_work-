@@ -13,7 +13,7 @@ import datetime
 
 def dbconnect():
     # database connection
-    connection = pymysql.connect(host="localhost", user="root", passwd="", database="carpooling")
+    connection = pymysql.connect(host="127.0.0.1",port=3307, user="root", passwd="", database="carpooling")
     # cursor = connection.cursor()
     # some other statements  with the help of cursor
     return connection
@@ -47,10 +47,9 @@ def select_fare_type():
             select_fare_type()
 
 # Add Routes to DB
-def route_to_db(response,slat,slong,dlat,dlong):
-    route_name=input("Enter route Name: ")
-    fare_type=select_fare_type()
-    print(fare_type)
+def route_to_db(response,route_name,slat,slong,dlat,dlong,driver_id,available_seats,fare_type):
+    # fare_type=select_fare_type()
+    # print(fare_type)
     routeArray =[]
     coo=[]
     total_cood=len(response.json()['features'][0]['geometry']['coordinates'][0])
@@ -64,10 +63,13 @@ def route_to_db(response,slat,slong,dlat,dlong):
     # setting up database
     connection=dbconnect()
     cursor=connection.cursor()
+    dlat=float(format(dlat, '.6f'))
+    dlong=float(format(dlong, '.6f'))
+    coo.append([dlat,dlong]) #We are appending dlat,dlong to our complete route as API not taking our last points.
     routeee=json.dumps(coo)
     # print(routeee)
 
-    cursor.execute("INSERT INTO routes(name,slat,slong,dlat,dlong,fare_type,croute) VALUES(%s,%s,%s,%s,%s,%s,%s)",(route_name,slat,slong,dlat,dlong,fare_type,routeee))
+    cursor.execute("INSERT INTO routes(name,driver_id,available_seats,slat,slong,dlat,dlong,fare_type,croute) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)",(route_name,driver_id,available_seats,slat,slong,dlat,dlong,fare_type,routeee))
     connection.commit()
 
 def create_map(response):
@@ -110,17 +112,18 @@ def read_data_from_db(table):
     record=cursor.fetchall()
     return record
 
-def get_same_route(des_lat,des_long):
+def get_same_route(des_lat,des_long,require_seats):
     conn=dbconnect()
     # {des_lat:.6f}
-    cursor=conn.cursor()
+    # cursor=conn.cursor() TO get rows in index array in return from db
+    cursor = pymysql.cursors.DictCursor(conn) #To get rows in key/value array in return from db
     # print(start_location)
     destination_location=str(des_lat)+", "+str(des_long)
     # SELECT * FROM `routes` where (((24.9085*10000) - CONVERT((slat*10000),INT)) <> 0);
     # cursor.execute("SELECT * FROM `routes` where ((({des_lat:.6f}*1000000) - CONVERT((dlat*1000000),INT)) = 0)  AND \
     #     ((({des_long:.6f}*1000000) - CONVERT((dlong*1000000),INT)) = 0)"\
     #     .format(des_long=des_long,des_lat=des_lat))
-    cursor.execute("SELECT * FROM `routes` where croute LIKE '%{s}%'".format(s=destination_location))
+    cursor.execute("SELECT * FROM `routes` where croute LIKE '%{s}%' AND available_seats>={seats}".format(s=destination_location,seats=require_seats))
     return cursor.fetchall()
 
 def calculate_fare_for_user(result,user_choice):
@@ -139,22 +142,27 @@ def calculate_fare_for_user(result,user_choice):
             fare=format(fare, '.2f')
             return fare
         case _:
-            print("Invalid")
+            print("Invalid")        
 
-def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
+def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long,require_seats):
     # Checking for similar destination routes (dest long lat ,source long lat)
-    dest_data=get_same_route(user_dest_lat,user_dest_long)
+    dest_data=get_same_route(user_dest_lat,user_dest_long,require_seats)
+    # print(dest_data)
     cmp_route_arr=[]
     fare_type_selection=[]
+    driver_id=[]
+    route_id=[]
     if(dest_data):
         for row in dest_data:
             # print(json.loads(row))
-            r1=np.asarray(row)
+            # r1=np.asarray(row)
             #Converting json(string) column from DB to Python list
-            cmp_route=json.loads(r1[7])         
-            # print(r1[1])
-            fare_type_selection.append(r1[6])
-            # print(r1[6])
+            cmp_route=json.loads(row['croute'])         
+            # print(row['name'])
+            fare_type_selection.append(row['fare_type'])
+            driver_id.append(row['driver_id'])
+            route_id.append(row['sno'])
+            # print(row['fare_type'])
             # print(len(cmp_route))
             # print(cmp_route) 
             cmp_route_arr.append(cmp_route) 
@@ -174,13 +182,15 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
         for route in range(num_rows):
             route_len=len(cmp_route_arr[route])
             driver_choice=fare_type_selection[route]
+            driver_identity=driver_id[route]
+            route_identifier=route_id[route]
             nearest_path_available=False
             min =999
             pickup_point_lat=0.0
             pickup_point_long=0.0
             for row in range(route_len):
                 dist_in_km=find_dist_btw_point(user_src_lat,user_src_long,cmp_route_arr[route][row][0],cmp_route_arr[route][row][1])
-                if(dist_in_km<8.5):
+                if(dist_in_km<2.0):
                     if(dist_in_km<min):
                         # getting minimum dist in 'min' variable and storing it's lat/long
                         nearest_path_available=True
@@ -197,20 +207,33 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long):
             if(nearest_path_available):
                 name=' Route '+str(count) #Setting a name for nested dictionary  
                 nearest_dest[name]={} #Initializing a dictionary that to be nested in a 'nearest_dest{}'
-                nearest_dest[name]['min']=format(min, '.2f')
+                nearest_dest[name]['route_id']=route_identifier
+                nearest_dest[name]['distance_to_car']=format(min, '.2f')
                 nearest_dest[name]['lat']=pickup_point_lat
                 nearest_dest[name]['long']=pickup_point_long
                 result=get_distance_time(pickup_point_lat,pickup_point_long,user_dest_lat,user_dest_long)
                 nearest_dest[name]['ride_fare']=calculate_fare_for_user(result,driver_choice)
+                driver_details=get_driver_details(driver_identity)
+                if(driver_details['status']):
+                    nearest_dest[name]['driver_name']=driver_details['name']
+                    nearest_dest[name]['Car_name']=driver_details['Car_name']
+                    nearest_dest[name]['Car_num']=driver_details['Car_num']
+                    nearest_dest[name]['color']=driver_details['color']
+                    nearest_dest[name]['Driver_phone_num']=driver_details['Driver_phone_num']
+                else:
+                    nearest_dest[name]['driver_details']='Not Found'
                 count=count+1
         #'for loop' body ends here
         # print("Nearest KEY Riders Array")
         # print(nearest_dest)
-        return nearest_dest
+        if(nearest_dest):
+            return nearest_dest
+        else:
+            print("No ride nearby .. ")
+            return None
     else:
         print("No ride Available")
-        sorry="sorry"
-        return sorry
+        return None
 
 def cordinate_to_name(lat,long):
     url = "https://trueway-geocoding.p.rapidapi.com/ReverseGeocode"
@@ -278,10 +301,10 @@ def get_fare_info(vehicle):
 
 # System Base Fare Caculation Based On Distance+Time
 def sys_based_fare_price(result):
-    distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
-    time_taken=result['rows'][0]['elements'][0]['duration']['value']/60 #ERROR BCZ API WEEK LIMIT EXISTS
-    # distance_travel=10 # I hardcoded as i have an error
-    # time_taken=5 # I hardcoded as i have an error
+    # distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
+    # time_taken=result['rows'][0]['elements'][0]['duration']['value']/60 #ERROR BCZ API WEEK LIMIT EXISTS
+    distance_travel=10 # I hardcoded as i have an error
+    time_taken=5 # I hardcoded as i have an error
     car_info=get_fare_info("mini")
     # print(time_taken)
     # print(car_info['base_fee'])
@@ -293,10 +316,10 @@ def sys_based_fare_price(result):
 
 # User Base Fare Caculation Based On Distance+Time
 def user_based_fare_price(result):
-    distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
-    time_taken=result['rows'][0]['elements'][0]['duration']['value']/60 #ERROR BCZ API WEEK LIMIT EXISTS
-    # distance_travel=10 # I hardcoded as i have an error
-    # time_taken=5 # I hardcoded as i have an error
+    # distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
+    # time_taken=result['rows'][0]['elements'][0]['duration']['value']/60 #ERROR BCZ API WEEK LIMIT EXISTS
+    distance_travel=10 # I hardcoded as i have an error
+    time_taken=5 # I hardcoded as i have an error
     fare_per_km=float(input("How much fare per km you want to charge: "))
     fare_per_min=float(input("How much fare per minute you want to charge: "))
     car_info=get_fare_info("mini")
@@ -326,12 +349,26 @@ def get_distance_time(src_lat,src_long,dest_lat,dest_long):
     # data = res.read()
     # return data
 
+def insert_driver_details(Driver_Name,Car_name,Car_num,color,Driver_phone_num,num_of_seats):
+    conn=dbconnect()
+    cursor=conn.cursor()
+    # cursor.execute("INSERT INTO `user` (`u_id`, `u_source_lat`, `u_source_long`, `u_dest_lat`, `u_dest_long`, `time`) VALUES ",('2', '24.881155338755885', '67.17119325702504', '24.887094030441283', '67.14344199686458',ts ))
+    cursor.execute("INSERT INTO driver(name,Car_name,Car_num,color,phone_num,num_of_seats) VALUES(%s,%s,%s,%s,%s,%s)",(Driver_Name,Car_name,Car_num,color,Driver_phone_num,num_of_seats))
+    conn.commit()
+
+def insert_passenger_details(Passenger_name,CNIC,Phone_Num):
+    conn=dbconnect()
+    cursor=conn.cursor()
+    # INSERT INTO `passenger` (`name`, `cnic`, `phone_num`) VALUES ('1', 'Ahsan Khalid', '4251212121212121', '03123456987');
+    cursor.execute("INSERT INTO passenger(name,cnic,phone_num) VALUES(%s,%s,%s)",(Passenger_name,CNIC,Phone_Num))
+    conn.commit()
+
 def display_ride_details(available_rides,pickup_point_names):
     count=0
     print("Available Routes \n")
     for i in available_rides:
         print(i)
-        print(" Minimum Distance :",available_rides[i]['min'])
+        print(" Minimum Distance :",available_rides[i]['distance_to_car'])
         print(" Ride Fare        :",available_rides[i]['ride_fare'])
         print(" Pick Up Point    :",pickup_point_names[count])
         print('\n')
@@ -340,114 +377,181 @@ def display_ride_details(available_rides,pickup_point_names):
     # print(available_rides)
     # print(pickup_point_names)
 
+def verify_credentials(user_phone_num,user_type):
+    resultant_obj={}
+    conn=dbconnect()
+    user_type=user_type.lower()
+    # cursor=conn.cursor() TO get rows in index array in return from db
+    cursor = pymysql.cursors.DictCursor(conn) #To get rows in key/value array in return from db
+    cursor.execute("SELECT id,name FROM {user_type} where phone_num={user_phone_num}".format(user_phone_num=user_phone_num,user_type=user_type))
+    record=cursor.fetchall()
+    if len(record)==0:
+        resultant_obj['status']=False
+    else:
+        for row in record:
+            resultant_obj['id']=row['id']
+            resultant_obj['name']=row['name']
+        resultant_obj['status']=True
+    # print(resultant_obj)
+    return resultant_obj
 
-# Main
+def get_driver_details(id):
+    driver_details={}
+    conn=dbconnect()
+    # cursor=conn.cursor() TO get rows in index array in return from db
+    cursor = pymysql.cursors.DictCursor(conn) #To get rows in key/value array in return from db
+    cursor.execute("SELECT * FROM `driver` where id={id}".format(id=id))
+    record=cursor.fetchall()
+    if len(record)==0:
+        driver_details['status']=False
+    else:
+        for row in record:
+            driver_details['name']=row['name']
+            driver_details['Car_name']=row['Car_name']
+            driver_details['Car_num']=row['Car_num']
+            driver_details['color']=row['color']
+            driver_details['Driver_phone_num']=row['phone_num']
+        driver_details['status']=True
+    return driver_details  
+
+def get_driver_history(id):
+    driver_history={}
+    index=1
+    conn=dbconnect()
+    # cursor=conn.cursor() TO get rows in index array in return from db
+    cursor = pymysql.cursors.DictCursor(conn) #To get rows in key/value array in return from db
+    cursor.execute("SELECT * FROM `driver_history` where Driver_id={id}".format(id=id))
+    record=cursor.fetchall()
+    if len(record)==0:
+        driver_history['status']=False
+    else:
+        driver_history['Driver_Record']={}
+        for row in record:
+            driver_record={}
+            driver_record['Route_id']=row['Route_id']
+            driver_record['Driver_id']=row['Driver_id']
+            driver_record['slat']=row['slat']
+            driver_record['slong']=row['slong']
+            driver_record['dlat']=row['dlat']
+            driver_record['dlong']=row['dlong']
+            driver_history[str(index)]=driver_record
+            index=index+1
+    return driver_history
+
+def update_seats(seats_booked,route_id):
+    conn=dbconnect()
+    cursor=conn.cursor()
+    cursor.execute("UPDATE `routes` SET `available_seats`=`available_seats` - {seats_booked} WHERE `routes`.`sno`={id}".format(seats_booked=seats_booked,id=route_id))
+    conn.commit()
+    rows_effected=cursor.rowcount
+    if(rows_effected==1):
+        return "Updated_Successfully"
+    else:
+        return "Operation Failed"
+
+
+# # Main 
+
+# # setting up database
+# connection=dbconnect()
+# cursor=connection.cursor()
+
+# # # ROUTES -->
+# # # Fast to Tower : 24.857008405532916, 67.26464745910047 ,24.8515870, 66.996767
+# # # malir cantt to Tower : 24.934510990824176, 67.17714789896337 ,24.8515870, 66.996767
+# # # shah faisal to Tower : 24.866176365450084, 67.1526977487848,24.8515870, 66.996767
+# slat=24.866176365450084
+# slong= 67.1526977487848
+# dlat=24.92493128950155
+# dlong= 67.03039602368902
+
+# response = get_directions_response(slat,slong,dlat,dlong)
+# # route_to_db(response,slat,slong,dlat,dlong)
+# m = create_map(response)
+
+# # Adding User to DB
+# # add_user(24.873003196931517, 67.09391657264112,24.92493128950155, 67.03039602368902)        # PAF
+# # add_user(24.886326091465836, 67.16379554405404,24.92493128950155, 67.03039602368902)        # Star Gate
+# # add_user(24.854539874358366, 67.22828180732928,24.92493128950155, 67.03039602368902)        # Quaidabad
+# # add_user(24.908267870424428, 67.13546172371537,24.92493128950155, 67.03039602368902)        # Habib uni 
+
+# # Call for adding User Marker
+# user_info=read_data_from_db("user")
+# for row in user_info:
+#     r1=np.asarray(row)
+#     add_user_marker_to_map(r1[1],r1[2],r1[0],m)
+#     # print(r1[0])
+
+
+# available_rides=locate_user(24.854539874358366,67.22828180732928,24.924508, 67.030546)     # user at quaidabad
+# # available_rides=locate_user(24.886326091465836, 67.16379554405404,24.924508, 67.030546)    # user at star gate
+# # available_rides=locate_user(24.873003196931517, 67.09391657264112,24.924508, 67.030546)    # user at PAF
+# # available_rides=locate_user(24.908267870424428, 67.13546172371537,24.924508, 67.030546)    # user at Habib uni
+# if(available_rides):
+#     pickup_point_names=put_markers_to_nearest_vehicles(available_rides,m)
+#     display_ride_details(available_rides,pickup_point_names)
+# m.save('./route_map.html')
+# connection.commit()
+
+
+
+
+
+
+
+
+# Main 2.0
 
 # setting up database
 connection=dbconnect()
 cursor=connection.cursor()
 
-slat=24.77954760427206
-slong=67.09080664088563
-dlat=24.855828584328297
-dlong=67.0284733543784
+# # INSERT DRIVER DETAILS
+# insert_driver_details('Ali Asghar','Vitz','PQR-333','White','03112213442',4)
 
-# moin khan to zainab market: 24.77954760427206, 67.09080664088563,24.855828584328297, 67.0284733543784
-# response = get_directions_response(48.34364,10.87474,48.37073,10.909257)
-# fast to halt: 24.908460648396446, 67.220800769881,24.848005654110313, 66.99520521035566
-# halt to luckyone: 24.884609570015506, 67.17634308152044,24.93263472395275, 67.08725306802955
+# # ROUTES -->
+# # Fast to board office :24.857008405532916, 67.26464745910047, 24.924508, 67.030546 
+# # malir cantt to board office : 24.934510990824176, 67.17714789896337 ,24.924508, 67.030546
+# # shah faisal to board office : 24.866176365450084, 67.1526977487848,24.924508, 67.030546
+slat=24.866176365450084
+slong=67.1526977487848
+dlat=24.92493128950155
+dlong=67.03039602368902
 
 response = get_directions_response(slat,slong,dlat,dlong)
 # route_to_db(response,slat,slong,dlat,dlong)
 m = create_map(response)
 
-# m.save('./route_map.`html')
-
 # Adding User to DB
-# add_user(24.881155338755885,67.17119325702504,24.887094030441283,67.14344199686458)
-# add_user(24.915400208475877, 67.10005999686508,24.933473, 67.085896)
-# add_user(24.922868867283775,67.09273973268596,24.933467, 67.087321)
-# add_user(24.916987109609163,67.09639826577977,24.933391, 67.087562)
+# add_user(24.873003196931517, 67.09391657264112,24.92493128950155, 67.03039602368902)        # PAF
+# add_user(24.886326091465836, 67.16379554405404,24.92493128950155, 67.03039602368902)        # Star Gate
+# add_user(24.854539874358366, 67.22828180732928,24.92493128950155, 67.03039602368902)        # Quaidabad
+# add_user(24.908267870424428, 67.13546172371537,24.92493128950155, 67.03039602368902)        # Habib uni 
 
-
-# Call for adding User Marker
-# add_user_marker_to_map(24.881155338755885, 67.17119325702504,1,m)
-user_info=read_data_from_db("user")
-for row in user_info:
-    r1=np.asarray(row)
-    add_user_marker_to_map(r1[1],r1[2],r1[0],m)
+# # Call for adding User Marker
+# user_info=read_data_from_db("user")
+# for row in user_info:
+#     r1=np.asarray(row)
+#     add_user_marker_to_map(r1[1],r1[2],r1[0],m)
     # print(r1[0])
 
 
-available_rides=locate_user(24.881155338755885,67.17119325702504,24.779736, 67.090401)
-pickup_point_names=put_markers_to_nearest_vehicles(available_rides,m)
-display_ride_details(available_rides,pickup_point_names)
-m.save('./route_map.html')
-# No new table required if we are going for each row a route. Helpful when multiple route has same path
-# cursor.execute("INSERT INTO routes(route_no,complete_route) VALUES(%s,%s)",(routeee))
+# available_rides=locate_user(24.854539874358366,67.22828180732928,24.924508, 67.030546)     # user at quaidabad
+# available_rides=locate_user(24.886326091465836, 67.16379554405404,24.924508, 67.030546)    # user at star gate
+# available_rides=locate_user(24.873003196931517, 67.09391657264112,24.924508, 67.030546,1)    # user at PAF
+# # available_rides=locate_user(24.908267870424428, 67.13546172371537,24.924508, 67.030546)    # user at Habib uni
+# print(available_rides)
+# if(available_rides):
+#     pickup_point_names=put_markers_to_nearest_vehicles(available_rides,m)
+#     display_ride_details(available_rides,pickup_point_names)
+# m.save('./route_map.html')
 
-# route_to_db(response,slat,slong,dlat,dlong)
+
+# CALLER FOR LOGIN CREDENTIALS VERIFICATION
+# print("TESTING FOR VERIFY FUNCTION\n")
+# result=verify_credentials("03115467235","Driver")
+# result=insert_passenger_details("Hamza Khalid","4256789987898","0312121234874")
+# print(result)
+# result=update_seats(2,6)
+# print(result)
 connection.commit()
-
-# # # Checking for similar destination routes (dest long lat ,source long lat)
-# # dest_data=get_same_route(24.848005, 66.995209)
-# # for row in dest_data:
-# #     # print(json.loads(row))
-# #     r1=np.asarray(row)
-# #     #Converting json(string) column from DB to Python list
-# #     cmp_route=json.loads(r1[6])  
-# #     # print(len(cmp_route))
-
-# #     # print('\n')
-
-# # reading file
-# cursor.execute("select croute from routes")
-# record=cursor.fetchall()
-
-# for row in record:
-#     # print(json.loads(row))
-#     r1=np.asarray(row)
-#     # print(r1[0])
-
-#     # print('\n')
-
-# # print(routeArray)
-# # result=cordinate_to_name(24.8961, 67.0814)
-# # for x in result['results']:
-# #     if(x['location_type']=='exact'):
-# #         print(x['sublocality'])uuuuuuuyujkk 
-
-
-# # GET TWO CO-ORDINATE DISTANCE AND TIME
-# result=get_distance_time()
-# # print(result['rows'][0]['elements'][0]['duration']['value'])
-# # print(type(result['rows'][0]['elements'][0]['distance']['value']))
-# # print(result.decode("utf-8"))
-
-
-# # LOCATE USER TO CAR
-# nearest_car=locate_user(24.884121,67.177979,24.933786,67.023636)
-
-
-# # GET PRICE FOR RIDE
-
-# # fare=sys_based_fare_price(result)
-# # print(fare)
-# fare=0
-# print("1.System Based Calculation \n 2.User Based Calculation \n 3.User Based Calculation only time\n")
-# user_choice=int(input("Kindly Select AnyOne Option "))
-# match user_choice:
-#     case 1:
-#        fare=sys_based_fare_price(result)
-#     case 2:
-#         fare=user_based_fare_price(result)
-#     case 3:
-#         fare=user_based_fare_price_on_distance(result)
-#     case _:
-#         print("Kindly Select right option")   
-
-
-# if fare==0:
-#     print("Sorry You Select a wrong choice")
-# else:
-#     print(fare)
