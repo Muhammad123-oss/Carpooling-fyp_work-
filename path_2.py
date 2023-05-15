@@ -48,14 +48,9 @@ def select_fare_type():
 
 # Add Routes to DB
 def route_to_db(response,route_name,slat,slong,dlat,dlong,driver_id,available_seats,fare_type):
-    # fare_type=select_fare_type()
-    # print(fare_type)
-    routeArray =[]
     coo=[]
     total_cood=len(response.json()['features'][0]['geometry']['coordinates'][0])
-    # print(total_cood)
     #gap=total_cood/5
-    # print(int(gap))
     for y in response.json()['features'][0]['geometry']['coordinates'][0]:        #[::int(gap)]:
         coo.append([y[1],y[0]])
 
@@ -112,20 +107,6 @@ def read_data_from_db(table):
     record=cursor.fetchall()
     return record
 
-def get_same_route(result):
-    conn=dbconnect()
-    # {des_lat:.6f}
-    # cursor=conn.cursor() TO get rows in index array in return from db
-    cursor = pymysql.cursors.DictCursor(conn) #To get rows in key/value array in return from db
-    # print(start_location)
-    # destination_location=str(des_lat)+", "+str(des_long)
-    # SELECT * FROM `routes` where (((24.9085*10000) - CONVERT((slat*10000),INT)) <> 0);
-    # cursor.execute("SELECT * FROM `routes` where ((({des_lat:.6f}*1000000) - CONVERT((dlat*1000000),INT)) = 0)  AND \
-    #     ((({des_long:.6f}*1000000) - CONVERT((dlong*1000000),INT)) = 0)"\
-    #     .format(des_long=des_long,des_lat=des_lat))
-    cursor.execute("SELECT sno FROM `routes` where sno IN (4,15)".format(s=result))
-    return cursor.fetchall()
-
 def calculate_fare_for_user(result,user_choice):
     # print(user_choice)
     match user_choice:
@@ -146,15 +127,8 @@ def calculate_fare_for_user(result,user_choice):
 
 def get_routes(require_seats):
     conn=dbconnect()
-    # {des_lat:.6f}
     # cursor=conn.cursor() TO get rows in index array in return from db
     cursor = pymysql.cursors.DictCursor(conn) #To get rows in key/value array in return from db
-    # print(start_location)
-    # destination_location=str(des_lat)+", "+str(des_long)
-    # SELECT * FROM `routes` where (((24.9085*10000) - CONVERT((slat*10000),INT)) <> 0);
-    # cursor.execute("SELECT * FROM `routes` where ((({des_lat:.6f}*1000000) - CONVERT((dlat*1000000),INT)) = 0)  AND \
-    #     ((({des_long:.6f}*1000000) - CONVERT((dlong*1000000),INT)) = 0)"\
-    #     .format(des_long=des_long,des_lat=des_lat))
     cursor.execute("SELECT * FROM `routes` where available_seats>={seats}".format(seats=require_seats))
     return cursor.fetchall()
 
@@ -194,39 +168,13 @@ def get_ride(require_seats,latitude,longitude):
         return 'found_nothing'
     
 def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long,require_seats):
-    # Checking for similar destination routes (dest long lat ,source long lat)
     result=[]
+    # Checking for similar destination routes (dest long lat ,source long lat)
     dest_data,num_rides_available=get_ride(require_seats,user_dest_lat,user_dest_long)
-    # print(dest_data)
-    # cmp_route_arr=[]
-    # fare_type_selection=[]
-    # driver_id=[]
-    # route_id=[]
     if(dest_data):
-        # for row in dest_data:
-        #     # print(json.loads(row))
-        #     # r1=np.asarray(row)
-        #     #Converting json(string) column from DB to Python list
-        #     cmp_route=json.loads(row['croute'])         
-        #     # print(row['name'])
-        #     fare_type_selection.append(row['fare_type'])
-        #     driver_id.append(row['driver_id'])
-        #     route_id.append(row['sno'])
-        #     # print(row['fare_type'])
-        #     # print(len(cmp_route))
-        #     # print(cmp_route) 
-        #     cmp_route_arr.append(cmp_route) 
-        #     # print(cmp_route)
-        #     # print(np.ndim(cmp_route)) #return the number of dimensions of an array
-        #     # print('\n')
-        # # print(cmp_route[0])
-        # # dist_in_km=find_dist_btw_point(user_src_lat,user_src_long,user_dest_lat,user_dest_long) #Distance function Test 
-        # # print(dist_in_km)
-
         num_rows=num_rides_available
-        # print("ARRAY VAL")
         nearest_dest={}
-        # print(cmp_route_arr)
+
         # Calculating User Distance from Vehicle Route lat,lon
         count=1
         for idx in range(num_rows):
@@ -248,10 +196,8 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long,require_
                         pickup_point_lat= dest_data[idx]['cmp_route'][row][0]
                         pickup_point_long= dest_data[idx]['cmp_route'][row][1]
 
-
                     #  For Knowledge: float(format(dist_in_km, '.2f')) If we want to get float value upto 2 decimal points
-                else:
-                    # print(dist_in_km)
+                else:                    
                     continue
             # Nested 'for loop' body ends here
             if(nearest_path_available):
@@ -274,16 +220,12 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long,require_
                     nearest_dest[name]['driver_details']='Not Found'
                 count=count+1
         #'for loop' body ends here
-        # print("Nearest KEY Riders Array")
-        # print(nearest_dest)
         if(nearest_dest):
             return nearest_dest
         else:
-            print("No ride nearby .. ")
-            return None
+            return "No ride nearby"
     else:
-        print("No ride Available")
-        return None
+        return "No ride Available"
 
 def cordinate_to_name(lat,long):
     url = "https://trueway-geocoding.p.rapidapi.com/ReverseGeocode"

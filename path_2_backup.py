@@ -48,14 +48,9 @@ def select_fare_type():
 
 # Add Routes to DB
 def route_to_db(response,route_name,slat,slong,dlat,dlong,driver_id,available_seats,fare_type):
-    # fare_type=select_fare_type()
-    # print(fare_type)
-    routeArray =[]
     coo=[]
     total_cood=len(response.json()['features'][0]['geometry']['coordinates'][0])
-    # print(total_cood)
     #gap=total_cood/5
-    # print(int(gap))
     for y in response.json()['features'][0]['geometry']['coordinates'][0]:        #[::int(gap)]:
         coo.append([y[1],y[0]])
 
@@ -112,20 +107,6 @@ def read_data_from_db(table):
     record=cursor.fetchall()
     return record
 
-def get_same_route(des_lat,des_long,require_seats):
-    conn=dbconnect()
-    # {des_lat:.6f}
-    # cursor=conn.cursor() TO get rows in index array in return from db
-    cursor = pymysql.cursors.DictCursor(conn) #To get rows in key/value array in return from db
-    # print(start_location)
-    destination_location=str(des_lat)+", "+str(des_long)
-    # SELECT * FROM `routes` where (((24.9085*10000) - CONVERT((slat*10000),INT)) <> 0);
-    # cursor.execute("SELECT * FROM `routes` where ((({des_lat:.6f}*1000000) - CONVERT((dlat*1000000),INT)) = 0)  AND \
-    #     ((({des_long:.6f}*1000000) - CONVERT((dlong*1000000),INT)) = 0)"\
-    #     .format(des_long=des_long,des_lat=des_lat))
-    cursor.execute("SELECT * FROM `routes` where croute LIKE '%{s}%' AND available_seats>={seats}".format(s=destination_location,seats=require_seats))
-    return cursor.fetchall()
-
 def calculate_fare_for_user(result,user_choice):
     # print(user_choice)
     match user_choice:
@@ -142,66 +123,82 @@ def calculate_fare_for_user(result,user_choice):
             fare=format(fare, '.2f')
             return fare
         case _:
-            print("Invalid")        
+            print("Invalid")
 
-def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long,require_seats):
-    # Checking for similar destination routes (dest long lat ,source long lat)
-    dest_data=get_same_route(user_dest_lat,user_dest_long,require_seats)
-    # print(dest_data)
+def get_routes(require_seats):
+    conn=dbconnect()
+    # cursor=conn.cursor() TO get rows in index array in return from db
+    cursor = pymysql.cursors.DictCursor(conn) #To get rows in key/value array in return from db
+    cursor.execute("SELECT * FROM `routes` where available_seats>={seats}".format(seats=require_seats))
+    return cursor.fetchall()
+
+def get_ride(require_seats,latitude,longitude):
+    available_routes=get_routes(require_seats)
     cmp_route_arr=[]
+    route_id=[]
     fare_type_selection=[]
     driver_id=[]
-    route_id=[]
-    if(dest_data):
-        for row in dest_data:
-            # print(json.loads(row))
-            # r1=np.asarray(row)
-            #Converting json(string) column from DB to Python list
-            cmp_route=json.loads(row['croute'])         
-            # print(row['name'])
-            fare_type_selection.append(row['fare_type'])
-            driver_id.append(row['driver_id'])
+    available_rides={}
+    count=0
+    if(available_routes):
+        for row in available_routes:
             route_id.append(row['sno'])
-            # print(row['fare_type'])
-            # print(len(cmp_route))
-            # print(cmp_route) 
+            cmp_route=json.loads(row['croute'])         
             cmp_route_arr.append(cmp_route) 
-            # print(cmp_route)
-            # print(np.ndim(cmp_route)) #return the number of dimensions of an array
-            # print('\n')
-        # print(cmp_route[0])
-        # dist_in_km=find_dist_btw_point(user_src_lat,user_src_long,user_dest_lat,user_dest_long) #Distance function Test 
-        # print(dist_in_km)
+            driver_id.append(row['driver_id'])
+            fare_type_selection.append(row['fare_type'])
 
         num_rows=len(cmp_route_arr)
-        # print("ARRAY VAL")
+        for idx in range(num_rows):
+            route_len=len(cmp_route_arr[idx])
+            for arr in range(route_len):
+                dist_in_km=find_dist_btw_point(latitude,longitude,cmp_route_arr[idx][arr][0],cmp_route_arr[idx][arr][1])
+                if(dist_in_km<2.0):
+                    name=count
+                    available_rides[name]={}
+                    available_rides[name]['route_id']=route_id[idx]
+                    available_rides[name]['driver_id']=driver_id[idx]
+                    available_rides[name]['fare_type']=fare_type_selection[idx]
+                    available_rides[name]['cmp_route']=cmp_route_arr[idx]
+                    count=count+1
+                    break
+        num_rides_available=count
+        return available_rides,num_rides_available
+    else:
+        return 'found_nothing'
+    
+def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long,require_seats):
+    result=[]
+    # Checking for similar destination routes (dest long lat ,source long lat)
+    dest_data,num_rides_available=get_ride(require_seats,user_dest_lat,user_dest_long)
+    if(dest_data):
+        num_rows=num_rides_available
         nearest_dest={}
-        # print(cmp_route_arr)
+
         # Calculating User Distance from Vehicle Route lat,lon
         count=1
-        for route in range(num_rows):
-            route_len=len(cmp_route_arr[route])
-            driver_choice=fare_type_selection[route]
-            driver_identity=driver_id[route]
-            route_identifier=route_id[route]
+        for idx in range(num_rows):
+            route_len=len(dest_data[idx]['cmp_route'])
+            driver_choice=dest_data[idx]['fare_type']
+            driver_identity=dest_data[idx]['driver_id']
+            route_identifier=dest_data[idx]['route_id']
             nearest_path_available=False
             min =999
             pickup_point_lat=0.0
             pickup_point_long=0.0
             for row in range(route_len):
-                dist_in_km=find_dist_btw_point(user_src_lat,user_src_long,cmp_route_arr[route][row][0],cmp_route_arr[route][row][1])
+                dist_in_km=find_dist_btw_point(user_src_lat,user_src_long,dest_data[idx]['cmp_route'][row][0],dest_data[idx]['cmp_route'][row][1])
                 if(dist_in_km<2.0):
                     if(dist_in_km<min):
                         # getting minimum dist in 'min' variable and storing it's lat/long
                         nearest_path_available=True
                         min=dist_in_km
-                        pickup_point_lat= cmp_route_arr[route][row][0]
-                        pickup_point_long= cmp_route_arr[route][row][1]
+                        pickup_point_lat= dest_data[idx]['cmp_route'][row][0]
+                        pickup_point_long= dest_data[idx]['cmp_route'][row][1]
 
 
                     #  For Knowledge: float(format(dist_in_km, '.2f')) If we want to get float value upto 2 decimal points
-                else:
-                    # print(dist_in_km)
+                else:                    
                     continue
             # Nested 'for loop' body ends here
             if(nearest_path_available):
@@ -224,16 +221,12 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long,require_
                     nearest_dest[name]['driver_details']='Not Found'
                 count=count+1
         #'for loop' body ends here
-        # print("Nearest KEY Riders Array")
-        # print(nearest_dest)
         if(nearest_dest):
             return nearest_dest
         else:
-            print("No ride nearby .. ")
-            return None
+            return "No ride nearby"
     else:
-        print("No ride Available")
-        return None
+        return "No ride Available"
 
 def cordinate_to_name(lat,long):
     url = "https://trueway-geocoding.p.rapidapi.com/ReverseGeocode"
@@ -329,8 +322,8 @@ def user_based_fare_price(result):
 
 # User Base Fare Caculation Based On Distance 
 def user_based_fare_price_on_distance(result):
-    distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
-    # distance_travel=10 # I hardcoded as i have an error
+    # distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
+    distance_travel=10 # I hardcoded as i have an error
     fare_per_km=float(input("How much fare per km you want to charge: "))
     car_info=get_fare_info("mini")
     fare=car_info['base_fee']+(fare_per_km*distance_travel)
@@ -538,8 +531,8 @@ m = create_map(response)
 
 # available_rides=locate_user(24.854539874358366,67.22828180732928,24.924508, 67.030546)     # user at quaidabad
 # available_rides=locate_user(24.886326091465836, 67.16379554405404,24.924508, 67.030546)    # user at star gate
-# available_rides=locate_user(24.873003196931517, 67.09391657264112,24.924508, 67.030546,1)    # user at PAF
-# # available_rides=locate_user(24.908267870424428, 67.13546172371537,24.924508, 67.030546)    # user at Habib uni
+# available_rides=locate_user(24.873003196931517, 67.09391657264112,24.866176,67.152698,1)    # user at PAF
+# available_rides=locate_user(24.908267870424428, 67.13546172371537,24.924508, 67.030546)    # user at Habib uni
 # print(available_rides)
 # if(available_rides):
 #     pickup_point_names=put_markers_to_nearest_vehicles(available_rides,m)
@@ -551,7 +544,9 @@ m = create_map(response)
 # print("TESTING FOR VERIFY FUNCTION\n")
 # result=verify_credentials("03115467235","Driver")
 # result=insert_passenger_details("Hamza Khalid","4256789987898","0312121234874")
-# print(result)
+# result,num_rides_available=get_ride(1,24.866176,67.152698)
+# result=get_same_route([4,15])
+# print(result,num_rides_available)
 # result=update_seats(2,6)
 # print(result)
 connection.commit()
