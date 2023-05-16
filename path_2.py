@@ -13,7 +13,7 @@ import datetime
 
 def dbconnect():
     # database connection
-    connection = pymysql.connect(host="fdb1028.awardspace.net",port=3306, user="4304346_carpooling", passwd="@U@XI7ft3KOuaL!-", database="4304346_carpooling")
+    connection = pymysql.connect(host="127.0.0.1",port=3307, user="root", passwd="", database="carpooling")
     # cursor = connection.cursor()
     # some other statements  with the help of cursor
     return connection
