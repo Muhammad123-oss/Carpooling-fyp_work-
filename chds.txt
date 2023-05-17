@@ -108,7 +108,7 @@ const settings = {
   "method": "POST",
   "headers": {},
   "processData": false,
-  "data": "{\"route_name\":\"XYZ\",\"slat\":\"24.880372376369387\",\"slong\":\"67.19579497740406\",\"dlat\":\"24.882685472728678\",\"dlong\":\"67.06821370228083\",\"driver_id\":\"7\",\"available_seats\":\"4\",\"fare_type\":\"system\"}"
+  "data": "{\"route_name\":\"NBV\",\"slat\":\"24.892726616404264\",\"slong\":\"67.19470305227793\",\"dlat\":\"24.931418033806384\",\"dlong\":\"67.01956443482545\",\"driver_id\":\"10\",\"available_seats\":\"3\",\"fare_type\":\"distance_time\",\"fare_per_km\":\"2.0\",\"fare_per_min\":\"2.33\"}"
 };
 
 $.ajax(settings).done(function (response) {
@@ -117,14 +117,16 @@ $.ajax(settings).done(function (response) {
 
 //Object For request
 {
-  "route_name":"PYT",
-  "slat":"24.879723008004902",
-  "slong":"67.17117742344097",
-  "dlat":"24.91330251759388",
-  "dlong":"67.20065749765101",
-  "driver_id":"9",
-  "available_seats":"4",
-  "fare_type":"system"
+  "route_name":"NBV",
+  "slat":"24.892726616404264",
+  "slong":"67.19470305227793",
+  "dlat":"24.931418033806384",
+  "dlong":"67.01956443482545",
+  "driver_id":"10",
+  "available_seats":"3",
+  "fare_type":"distance_time",
+  "fare_per_km":"2.0",
+  "fare_per_min":"2.33"
 }
 
 

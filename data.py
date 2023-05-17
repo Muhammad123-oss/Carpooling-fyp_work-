@@ -60,7 +60,7 @@ class offer_pool(Resource):
 	def post(self):
 		data=request.get_json()
 		complete_route=get_directions_response(float(data['slat']),float(data['slong']),float(data['dlat']),float(data['dlong']))
-		response=route_to_db(complete_route,str(data['route_name']),float(data['slat']),float(data['slong']),float(data['dlat']),float(data['dlong']),int(data['driver_id']),int(data['available_seats']),str(data['fare_type']))
+		response=route_to_db(complete_route,str(data['route_name']),float(data['slat']),float(data['slong']),float(data['dlat']),float(data['dlong']),int(data['driver_id']),int(data['available_seats']),str(data['fare_type']),float(data['fare_per_km']),float(data['fare_per_min']))
 		return jsonify({'data':'Route Inserted'})
 
 # adding the defined resources along with their corresponding urls

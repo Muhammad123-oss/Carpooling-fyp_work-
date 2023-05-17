@@ -47,7 +47,7 @@ def select_fare_type():
             select_fare_type()
 
 # Add Routes to DB
-def route_to_db(response,route_name,slat,slong,dlat,dlong,driver_id,available_seats,fare_type):
+def route_to_db(response,route_name,slat,slong,dlat,dlong,driver_id,available_seats,fare_type,fare_per_km,fare_per_min):
     coo=[]
     total_cood=len(response.json()['features'][0]['geometry']['coordinates'][0])
     #gap=total_cood/5
@@ -58,13 +58,14 @@ def route_to_db(response,route_name,slat,slong,dlat,dlong,driver_id,available_se
     # setting up database
     connection=dbconnect()
     cursor=connection.cursor()
+    print(fare_per_km)
     dlat=float(format(dlat, '.6f'))
     dlong=float(format(dlong, '.6f'))
     coo.append([dlat,dlong]) #We are appending dlat,dlong to our complete route as API not taking our last points.
     routeee=json.dumps(coo)
     # print(routeee)
 
-    cursor.execute("INSERT INTO routes(name,driver_id,available_seats,slat,slong,dlat,dlong,fare_type,croute) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)",(route_name,driver_id,available_seats,slat,slong,dlat,dlong,fare_type,routeee))
+    cursor.execute("INSERT INTO routes(name,driver_id,available_seats,slat,slong,dlat,dlong,fare_per_km,fare_per_min,fare_type,croute) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",(route_name,driver_id,available_seats,slat,slong,dlat,dlong,fare_per_km,fare_per_min,fare_type,routeee))
     connection.commit()
 
 def create_map(response):
@@ -107,7 +108,7 @@ def read_data_from_db(table):
     record=cursor.fetchall()
     return record
 
-def calculate_fare_for_user(result,user_choice):
+def calculate_fare_for_user(result,user_choice,fare_per_km,fare_per_min):
     # print(user_choice)
     match user_choice:
         case 'system':
@@ -115,11 +116,11 @@ def calculate_fare_for_user(result,user_choice):
             fare=format(fare, '.2f')
             return fare
         case 'distance_time':
-            fare=user_based_fare_price(result)
+            fare=user_based_fare_price(result,fare_per_km,fare_per_min)
             fare=format(fare, '.2f')
             return fare
         case 'distance':
-            fare=user_based_fare_price_on_distance(result)
+            fare=user_based_fare_price_on_distance(result,fare_per_km)
             fare=format(fare, '.2f')
             return fare
         case _:
@@ -138,11 +139,15 @@ def get_ride(require_seats,latitude,longitude):
     route_id=[]
     fare_type_selection=[]
     driver_id=[]
+    price_per_km=[]
+    price_per_min=[]
     available_rides={}
     count=0
     if(available_routes):
         for row in available_routes:
             route_id.append(row['sno'])
+            price_per_km.append(row['fare_per_km'])
+            price_per_min.append(row['fare_per_min'])
             cmp_route=json.loads(row['croute'])         
             cmp_route_arr.append(cmp_route) 
             driver_id.append(row['driver_id'])
@@ -158,6 +163,8 @@ def get_ride(require_seats,latitude,longitude):
                     available_rides[name]={}
                     available_rides[name]['route_id']=route_id[idx]
                     available_rides[name]['driver_id']=driver_id[idx]
+                    available_rides[name]['fare_per_km']=price_per_km[idx]
+                    available_rides[name]['fare_per_min']=price_per_min[idx]
                     available_rides[name]['fare_type']=fare_type_selection[idx]
                     available_rides[name]['cmp_route']=cmp_route_arr[idx]
                     count=count+1
@@ -182,6 +189,8 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long,require_
             driver_choice=dest_data[idx]['fare_type']
             driver_identity=dest_data[idx]['driver_id']
             route_identifier=dest_data[idx]['route_id']
+            fare_per_km=dest_data[idx]['fare_per_km']
+            fare_per_min=dest_data[idx]['fare_per_min']
             nearest_path_available=False
             min =999
             pickup_point_lat=0.0
@@ -208,7 +217,7 @@ def locate_user(user_src_lat,user_src_long,user_dest_lat,user_dest_long,require_
                 nearest_dest[name]['lat']=pickup_point_lat
                 nearest_dest[name]['long']=pickup_point_long
                 result=get_distance_time(pickup_point_lat,pickup_point_long,user_dest_lat,user_dest_long)
-                nearest_dest[name]['ride_fare']=calculate_fare_for_user(result,driver_choice)
+                nearest_dest[name]['ride_fare']=calculate_fare_for_user(result,driver_choice.lower(),fare_per_km,fare_per_min)
                 driver_details=get_driver_details(driver_identity)
                 if(driver_details['status']):
                     nearest_dest[name]['driver_name']=driver_details['name']
@@ -307,25 +316,25 @@ def sys_based_fare_price(result):
         return fare
 
 # User Base Fare Caculation Based On Distance+Time
-def user_based_fare_price(result):
+def user_based_fare_price(result,fare_per_km,fare_per_min):
     # distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
     # time_taken=result['rows'][0]['elements'][0]['duration']['value']/60 #ERROR BCZ API WEEK LIMIT EXISTS
     distance_travel=10 # I hardcoded as i have an error
     time_taken=5 # I hardcoded as i have an error
-    fare_per_km=float(input("How much fare per km you want to charge: "))
-    fare_per_min=float(input("How much fare per minute you want to charge: "))
+    # fare_per_km=float(input("How much fare per km you want to charge: "))
+    # fare_per_min=float(input("How much fare per minute you want to charge: "))
     car_info=get_fare_info("mini")
-    fare=car_info['base_fee']+(fare_per_min*time_taken)+(fare_per_km*distance_travel)
+    fare=car_info['base_fee']+(float(fare_per_min)*time_taken)+(float(fare_per_km)*distance_travel)
     return fare
 
 
 # User Base Fare Caculation Based On Distance 
-def user_based_fare_price_on_distance(result):
+def user_based_fare_price_on_distance(result,fare_per_km):
     # distance_travel=result['rows'][0]['elements'][0]['distance']['value']/1000 #ERROR BCZ API WEEK LIMIT EXISTS
     distance_travel=10 # I hardcoded as i have an error
-    fare_per_km=float(input("How much fare per km you want to charge: "))
+    # fare_per_km=float(input("How much fare per km you want to charge: "))
     car_info=get_fare_info("mini")
-    fare=car_info['base_fee']+(fare_per_km*distance_travel)
+    fare=car_info['base_fee']+(float(fare_per_km)*distance_travel)
     return fare
 
 
